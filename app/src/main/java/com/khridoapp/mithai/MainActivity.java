@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
     static class OrderItem {
         String id, name;
         double qty, price;
-        boolean isAdvance; // एडवांस ऑर्डर ट्रैक करने के लिए
+        boolean isAdvance;
         OrderItem(String id, String name, double qty, double price, boolean isAdvance) {
             this.id = id; this.name = name; this.qty = qty; this.price = price;
             this.isAdvance = isAdvance;
@@ -57,7 +57,6 @@ public class MainActivity extends Activity {
     private ArrayList<Product> products = new ArrayList<>();
     private ArrayList<Order> orders = new ArrayList<>();
     
-    // दो अलग कार्ट: एक तुरंत बिक्री के लिए, एक एडवांस बुकिंग के लिए
     private HashMap<String, Double> regularCart = new HashMap<>();
     private HashMap<String, Double> advanceCart = new HashMap<>();
 
@@ -124,13 +123,14 @@ public class MainActivity extends Activity {
 
     private void initSeedProducts() {
         if (products.isEmpty()) {
-            products.add(new Product("p1", "गुलाब जामुन", "Gulab Jamun", 360, 15, "🟤"));
-            products.add(new Product("p2", "काजू कतली", "Kaju Katli", 820, 0, "🔷")); // स्टॉक खत्म (टेस्टिंग के लिए 0)
-            products.add(new Product("p3", "रसगुल्ला", "Rasgulla", 320, 20, "⚪"));
-            products.add(new Product("p4", "बेसन लड्डू", "Besan Ladoo", 400, 5, "🟡"));
+            products.add(new Product("p1", "गुलाब जामुन", "Gulab Jamun", 360, 45, "🟤"));
+            products.add(new Product("p2", "काजू कतली", "Kaju Katli", 820, 20, "🔷"));
+            products.add(new Product("p3", "रसगुल्ला", "Rasgulla", 320, 35, "⚪"));
+            products.add(new Product("p4", "बेसन लड्डू", "Besan Ladoo", 400, 15, "🟡"));
         }
     }
 
+    // --- नया ऑर्डर काउंटर रेंडर ---
     private void renderShop() {
         shopProductList.removeAllViews();
         for (final Product p : products) {
@@ -145,7 +145,6 @@ public class MainActivity extends Activity {
             card.setPadding(24, 24, 24, 24);
             card.setElevation(3f);
 
-            // मिठाई हेडर
             LinearLayout headerRow = new LinearLayout(this);
             headerRow.setOrientation(LinearLayout.HORIZONTAL);
             headerRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -167,9 +166,8 @@ public class MainActivity extends Activity {
             nameContainer.addView(tvName);
 
             TextView tvPrice = new TextView(this);
-            // अगर स्टॉक 0 है तो लाल रंग में "स्टॉक खत्म" दिखाएं
             if (p.stock <= 0) {
-                tvPrice.setText("भाव: ₹" + p.price + "/kg | ⚠️ स्टॉक खत्म (सिर्फ एडवांस ऑर्डर)");
+                tvPrice.setText("भाव: ₹" + p.price + "/kg | ⚠️ स्टॉक खत्म (सिर्फ एडवांस)");
                 tvPrice.setTextColor(Color.RED);
             } else {
                 tvPrice.setText("भाव: ₹" + p.price + "/kg | स्टॉक: " + String.format("%.2f", p.stock) + " kg");
@@ -181,12 +179,10 @@ public class MainActivity extends Activity {
             headerRow.addView(nameContainer);
             card.addView(headerRow);
 
-            // इनपुट कंटेनर (लाइव लेबल्स के साथ)
             LinearLayout inputContainer = new LinearLayout(this);
             inputContainer.setOrientation(LinearLayout.HORIZONTAL);
             inputContainer.setPadding(0, 12, 0, 12);
 
-            // वजन फ़ील्ड + ड्रॉपडाउन
             LinearLayout qtyBox = new LinearLayout(this);
             qtyBox.setOrientation(LinearLayout.VERTICAL);
             LinearLayout.LayoutParams lpQty = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f);
@@ -216,7 +212,6 @@ public class MainActivity extends Activity {
             qtyBox.addView(lblKg);
             inputContainer.addView(qtyBox);
 
-            // रुपये फ़ील्ड
             LinearLayout rsBox = new LinearLayout(this);
             rsBox.setOrientation(LinearLayout.VERTICAL);
             rsBox.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
@@ -272,14 +267,10 @@ public class MainActivity extends Activity {
                 }
             });
 
-            // दो बटन्स के लिए होरिज़ॉन्टल रो (रेगुलर कार्ट और एडवांस ऑर्डर)
             LinearLayout actionRow = new LinearLayout(this);
             actionRow.setOrientation(LinearLayout.HORIZONTAL);
-            LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            actionRow.setLayoutParams(actionParams);
+            actionRow.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-            // बटन 1: काउंटर कार्ट में जोड़ें
             Button btnAddRegular = new Button(this);
             btnAddRegular.setText("🛒 काउंटर कार्ट");
             btnAddRegular.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF6200EE));
@@ -295,26 +286,23 @@ public class MainActivity extends Activity {
                     double qtyInKg = spUnit.getSelectedItem().toString().equals("gm") ? (inputVal / 1000.0) : inputVal;
                     
                     if (p.stock <= 0) {
-                        Toast.makeText(MainActivity.this, "स्टॉक नहीं है! कृपया 'एडवांस ऑर्डर' बटन का उपयोग करें।", Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, "स्टॉक नहीं है! एडवांस बुक करें।", Toast.LENGTH_SHORT).show();
                         return;
                     }
                     if (qtyInKg <= p.stock) {
                         double current = regularCart.containsKey(p.id) ? regularCart.get(p.id) : 0;
                         regularCart.put(p.id, current + qtyInKg);
-                        Toast.makeText(MainActivity.this, p.name + " काउंटर कार्ट में जमा!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, p.name + " काउंटर कार्ट में!", Toast.LENGTH_SHORT).show();
                         etKg.setText(""); etRs.setText("");
                         updateCartButton();
-                    } else {
-                        Toast.makeText(MainActivity.this, "स्टॉक कम है!", Toast.LENGTH_SHORT).show();
                     }
                 }
             });
             actionRow.addView(btnAddRegular);
 
-            // बटन 2: 📋 एडवांस ऑर्डर में जोड़ें (यह स्टॉक 0 होने पर भी काम करेगा)
             Button btnAddAdvance = new Button(this);
             btnAddAdvance.setText("📋 एडवांस बुक");
-            btnAddAdvance.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFF9800)); // ऑरेंज कलर
+            btnAddAdvance.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFF9800));
             btnAddAdvance.setTextColor(Color.WHITE);
             btnAddAdvance.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
             
@@ -326,11 +314,9 @@ public class MainActivity extends Activity {
                     
                     double current = advanceCart.containsKey(p.id) ? advanceCart.get(p.id) : 0;
                     advanceCart.put(p.id, current + qtyInKg);
-                    Toast.makeText(MainActivity.this, p.name + " एडवांस ऑर्डर बुक!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, p.name + " एडवांस बुक!", Toast.LENGTH_SHORT).show();
                     etKg.setText(""); etRs.setText("");
                     updateCartButton();
-                } else {
-                    Toast.makeText(MainActivity.this, "कृपया मात्रा दर्ज करें!", Toast.LENGTH_SHORT).show();
                 }
             });
             actionRow.addView(btnAddAdvance);
@@ -345,101 +331,23 @@ public class MainActivity extends Activity {
         btnFloatingCart.setText("🛒 कार्ट (" + totalItems + ")");
     }
 
-    // --- फाइनल बिल रसीद (काउंटर + एडवांस का वर्गीकरण) ---
-    private void showCartDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("बिल रसीद समरी");
-
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(32, 32, 32, 32);
-
-        double totalAmount = 0;
-        final ArrayList<OrderItem> tempItems = new ArrayList<>();
-
-        // 1. काउंटर आइटम्स डिस्प्ले
-        if (!regularCart.isEmpty()) {
-            TextView tvTitleReg = new TextView(this);
-            tvTitleReg.setText("📦 तुरंत काउंटर डिलीवरी:");
-            tvTitleReg.setTypeface(null, Typeface.BOLD);
-            layout.addView(tvTitleReg);
-
-            for (Map.Entry<String, Double> entry : regularCart.entrySet()) {
-                for (Product p : products) {
-                    if (p.id.equals(entry.getKey())) {
-                        double amt = entry.getValue() * p.price;
-                        totalAmount += amt;
-                        tempItems.add(new OrderItem(p.id, p.name, entry.getValue(), p.price, false));
-
-                        TextView itemTv = new TextView(this);
-                        itemTv.setText("  • " + p.name + ": " + String.format("%.3f", entry.getValue()) + " kg = ₹" + String.format("%.2f", amt));
-                        layout.addView(itemTv);
-                    }
-                }
-            }
-        }
-
-        // 2. एडवांस ऑर्डर्स डिस्प्ले
-        if (!advanceCart.isEmpty()) {
-            TextView tvTitleAdv = new TextView(this);
-            tvTitleAdv.setText("\n📋 अग्रिम बुकिंग (Advance Orders):");
-            tvTitleAdv.setTypeface(null, Typeface.BOLD);
-            tvTitleAdv.setTextColor(0xFFFF9800);
-            layout.addView(tvTitleAdv);
-
-            for (Map.Entry<String, Double> entry : advanceCart.entrySet()) {
-                for (Product p : products) {
-                    if (p.id.equals(entry.getKey())) {
-                        double amt = entry.getValue() * p.price;
-                        totalAmount += amt;
-                        tempItems.add(new OrderItem(p.id, p.name, entry.getValue(), p.price, true));
-
-                        TextView itemTv = new TextView(this);
-                        itemTv.setText("  • [Advance] " + p.name + ": " + String.format("%.3f", entry.getValue()) + " kg = ₹" + String.format("%.2f", amt));
-                        layout.addView(itemTv);
-                    }
-                }
-            }
-        }
-
-        TextView totalTv = new TextView(this);
-        totalTv.setText("\nकुल फाइनल बिल: ₹" + String.format("%.2f", totalAmount));
-        totalTv.setTextSize(18);
-        totalTv.setTypeface(null, Typeface.BOLD);
-        totalTv.setTextColor(Color.BLACK);
-        layout.addView(totalTv);
-
-        final EditText nameInput = new EditText(this);
-        nameInput.setHint("ग्राहक का नाम दर्ज करें");
-        layout.addView(nameInput);
-        builder.setView(layout);
-
-        final double finalTotal = totalAmount;
-        builder.setPositiveButton("ऑर्डर डन करें", (dialog, which) -> {
-            String name = nameInput.getText().toString();
-            if (!name.isEmpty() && (!regularCart.isEmpty() || !advanceCart.isEmpty())) {
-                // सिर्फ लाइव बिक्री वाले का स्टॉक घटाएं, एडवांस वाले का नहीं
-                for (OrderItem item : tempItems) {
-                    if (!item.isAdvance) {
-                        for (Product p : products) {
-                            if (p.id.equals(item.id)) p.stock -= item.qty;
-                        }
-                    }
-                }
-                orders.add(new Order("ORD" + System.currentTimeMillis(), name, tempItems, finalTotal));
-                regularCart.clear();
-                advanceCart.clear();
-                updateCartButton();
-                Toast.makeText(MainActivity.this, "सफलतापूर्वक बुक हो गया! 👍", Toast.LENGTH_LONG).show();
-            }
-        });
-        builder.setNegativeButton("बंद करें", null);
-        builder.show();
-    }
-
-    // --- इन्वेंट्री स्टॉक मैनेजमेंट टैब ---
+    // --- इन्वेंट्री टैब (➕ नया प्रोडक्ट और 💰 भाव बदलें फ़ीचर्स के साथ) ---
     private void renderInventoryTab() {
         dashDynamicContent.removeAllViews();
+
+        // ➕ शीर्ष पर नया उत्पाद जोड़ें बटन
+        Button btnAddNewProduct = new Button(this);
+        btnAddNewProduct.setText("➕ नई मिठाई दुकान में जोड़ें");
+        btnAddNewProduct.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF6200EE));
+        btnAddNewProduct.setTextColor(Color.WHITE);
+        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        btnLp.setMargins(0, 0, 0, 16);
+        btnAddNewProduct.setLayoutParams(btnLp);
+        
+        btnAddNewProduct.setOnClickListener(v -> showAddProductDialog());
+        dashDynamicContent.addView(btnAddNewProduct);
+
+        // मिठाइयों की सूची
         for (final Product p : products) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -452,67 +360,158 @@ public class MainActivity extends Activity {
             row.setLayoutParams(lp);
 
             TextView tvInfo = new TextView(this);
-            tvInfo.setText(p.emoji + " " + p.name + "\nस्टॉक काउंटर: " + String.format("%.2f", p.stock) + " kg");
-            tvInfo.setTextSize(16);
+            tvInfo.setText(p.emoji + " " + p.name + "\nभाव: ₹" + p.price + "/kg | स्टॉक: " + String.format("%.2f", p.stock) + " kg");
+            tvInfo.setTextSize(15);
             tvInfo.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
             row.addView(tvInfo);
 
-            Button btnUpdateStock = new Button(this);
-            btnUpdateStock.setText("✏️ स्टॉक भरें");
-            btnUpdateStock.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF03DAC5));
-            btnUpdateStock.setOnClickListener(v -> {
+            // 💰 नया भाव बदलें (Rate Option) बटन
+            Button btnUpdateRate = new Button(this);
+            btnUpdateRate.setText("💰 भाव बदलें");
+            btnUpdateRate.setTextSize(12);
+            btnUpdateRate.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF03DAC5));
+            btnUpdateRate.setTextColor(Color.BLACK);
+            
+            btnUpdateRate.setOnClickListener(v -> {
                 AlertDialog.Builder b = new AlertDialog.Builder(MainActivity.this);
-                b.setTitle(p.name + " - स्टॉक रीलोड");
+                b.setTitle(p.name + " - नया रेट तय करें");
+                
                 final EditText input = new EditText(MainActivity.this);
+                input.setHint("नया भाव (रुपये/kg) लिखें");
                 input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
                 b.setView(input);
-                b.setPositiveButton("भरें", (d, w) -> {
-                    if (!input.getText().toString().isEmpty()) {
-                        p.stock = Double.parseDouble(input.getText().toString());
-                        renderInventoryTab();
+
+                b.setPositiveButton("रेट बदलें", (dialog, which) -> {
+                    String str = input.getText().toString();
+                    if (!str.isEmpty()) {
+                        p.price = Double.parseDouble(str); // भाव अपडेट
+                        renderInventoryTab(); // रिफ्रेश इन्वेंट्री
+                        Toast.makeText(MainActivity.this, "नया भाव लागू हो गया!", Toast.LENGTH_SHORT).show();
                     }
                 });
+                b.setNegativeButton("कैंसिल", null);
                 b.show();
             });
-            row.addView(btnUpdateStock);
+
+            row.addView(btnUpdateRate);
             dashDynamicContent.addView(row);
         }
     }
 
-    // --- ऑर्डर्स रिपोर्ट टैब (लाइव और एडवांस अलग-अलग वर्गीकरण) ---
-    private void renderOrdersTab() {
-        dashDynamicContent.removeAllViews();
-        if (orders.isEmpty()) {
-            TextView empty = new TextView(this);
-            empty.setText("कोई बिक्री रिकॉर्ड नहीं मिला।");
-            dashDynamicContent.addView(empty);
-            return;
+    // --- ➕ नई मिठाई जोड़ने का फॉर्म डायलॉग ---
+    private void showAddProductDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("➕ नई मिठाई का विवरण भरें");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(32, 24, 32, 24);
+
+        final EditText etName = new EditText(this); etName.setHint("मिठाई का नाम (उदा: पेड़ा)"); layout.addView(etName);
+        final EditText etNameEn = new EditText(this); etNameEn.setHint("English Name (Key)"); layout.addView(etNameEn);
+        final EditText etPrice = new EditText(this); etPrice.setHint("भाव प्रति किलो (₹ Rate)"); etPrice.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); layout.addView(etPrice);
+        final EditText etStock = new EditText(this); etStock.setHint("शुरुआती स्टॉक मात्रा (kg)"); etStock.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); layout.addView(etStock);
+        final EditText etEmoji = new EditText(this); etEmoji.setHint("फोटो इमोजी (उदा: 🥮, 🟥)"); layout.addView(etEmoji);
+
+        builder.setView(layout);
+
+        builder.setPositiveButton("दुकान में जोड़ें", (dialog, which) -> {
+            String name = etName.getText().toString();
+            String nameEn = etNameEn.getText().toString();
+            String priceStr = etPrice.getText().toString();
+            String stockStr = etStock.getText().toString();
+            String emoji = etEmoji.getText().toString().isEmpty() ? "🍡" : etEmoji.getText().toString();
+
+            if (!name.isEmpty() && !priceStr.isEmpty() && !stockStr.isEmpty()) {
+                double price = Double.parseDouble(priceStr);
+                double stock = Double.parseDouble(stockStr);
+                String id = "p" + (products.size() + 1);
+
+                // लिस्ट में ऐड होते ही यह दोनों टैब में दिखने लगेगा
+                products.add(new Product(id, name, nameEn, price, stock, emoji));
+                
+                renderInventoryTab(); // इन्वेंट्री अपडेट
+                Toast.makeText(MainActivity.this, name + " काउंटर और स्टॉक दोनों में जुड़ गई! 🎉", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(MainActivity.this, "कृपया पूरा विवरण सही भरें!", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("कैंसिल", null);
+        builder.show();
+    }
+
+    private void showCartDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("फाइनल बिल");
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(32, 32, 32, 32);
+
+        double total = 0;
+        final ArrayList<OrderItem> tempItems = new ArrayList<>();
+
+        if (!regularCart.isEmpty()) {
+            TextView tvTitleReg = new TextView(this); tvTitleReg.setText("📦 तुरंत काउंटर डिलीवरी:"); tvTitleReg.setTypeface(null, Typeface.BOLD); layout.addView(tvTitleReg);
+            for (Map.Entry<String, Double> entry : regularCart.entrySet()) {
+                for (Product p : products) {
+                    if (p.id.equals(entry.getKey())) {
+                        double amt = entry.getValue() * p.price; total += amt;
+                        tempItems.add(new OrderItem(p.id, p.name, entry.getValue(), p.price, false));
+                        TextView itemTv = new TextView(this); itemTv.setText("  • " + p.name + ": " + String.format("%.3f", entry.getValue()) + " kg = ₹" + String.format("%.2f", amt)); layout.addView(itemTv);
+                    }
+                }
+            }
         }
 
+        if (!advanceCart.isEmpty()) {
+            TextView tvTitleAdv = new TextView(this); tvTitleAdv.setText("\n📋 अग्रिम बुकिंग (Advance):"); tvTitleAdv.setTypeface(null, Typeface.BOLD); tvTitleAdv.setTextColor(0xFFFF9800); layout.addView(tvTitleAdv);
+            for (Map.Entry<String, Double> entry : advanceCart.entrySet()) {
+                for (Product p : products) {
+                    if (p.id.equals(entry.getKey())) {
+                        double amt = entry.getValue() * p.price; total += amt;
+                        tempItems.add(new OrderItem(p.id, p.name, entry.getValue(), p.price, true));
+                        TextView itemTv = new TextView(this); itemTv.setText("  • [Advance] " + p.name + ": " + String.format("%.3f", entry.getValue()) + " kg = ₹" + String.format("%.2f", amt)); layout.addView(itemTv);
+                    }
+                }
+            }
+        }
+
+        TextView totalTv = new TextView(this);
+        totalTv.setText("\nकुल राशि: ₹" + String.format("%.2f", total));
+        totalTv.setTextSize(18); totalTv.setTypeface(null, Typeface.BOLD);
+        layout.addView(totalTv);
+
+        final EditText nameInput = new EditText(this); nameInput.setHint("ग्राहक का नाम"); layout.addView(nameInput);
+        builder.setView(layout);
+
+        final double finalTotal = total;
+        builder.setPositiveButton("ऑर्डर पक्का करें", (dialog, which) -> {
+            String name = nameInput.getText().toString();
+            if (!name.isEmpty() && (!regularCart.isEmpty() || !advanceCart.isEmpty())) {
+                for (OrderItem item : tempItems) {
+                    if (!item.isAdvance) {
+                        for (Product p : products) { if (p.id.equals(item.id)) p.stock -= item.qty; }
+                    }
+                }
+                orders.add(new Order("ORD" + System.currentTimeMillis(), name, tempItems, finalTotal));
+                regularCart.clear(); advanceCart.clear();
+                updateCartButton();
+                Toast.makeText(MainActivity.this, "ऑर्डर सुरक्षित! 🙏", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.show();
+    }
+
+    private void renderOrdersTab() {
+        dashDynamicContent.removeAllViews();
         for (Order o : orders) {
-            LinearLayout orderCard = new LinearLayout(this);
-            orderCard.setOrientation(LinearLayout.VERTICAL);
-            orderCard.setPadding(16, 16, 16, 16);
-            orderCard.setBackgroundColor(Color.WHITE);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(0, 4, 0, 12);
-            orderCard.setLayoutParams(lp);
-
-            TextView tvHeader = new TextView(this);
-            tvHeader.setText("🧾 ग्राहक: " + o.customerName + " | कुल बिल: ₹" + String.format("%.2f", o.total));
-            tvHeader.setTypeface(null, Typeface.BOLD);
-            orderCard.addView(tvHeader);
-
-            // ऑर्डर के अंदर का माल दिखाएं
+            LinearLayout orderCard = new LinearLayout(this); orderCard.setOrientation(LinearLayout.VERTICAL); orderCard.setPadding(16, 16, 16, 16); orderCard.setBackgroundColor(Color.WHITE);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT); lp.setMargins(0, 4, 0, 12); orderCard.setLayoutParams(lp);
+            TextView tvHeader = new TextView(this); tvHeader.setText("🧾 ग्राहक: " + o.customerName + " | कुल बिल: ₹" + String.format("%.2f", o.total)); tvHeader.setTypeface(null, Typeface.BOLD); orderCard.addView(tvHeader);
             for (OrderItem item : o.items) {
                 TextView tvItem = new TextView(this);
-                if (item.isAdvance) {
-                    tvItem.setText("  • [⚠️ एडवांस बुकिंग] " + item.name + " - " + String.format("%.3f", item.qty) + " kg");
-                    tvItem.setTextColor(0xFFFF9800);
-                } else {
-                    tvItem.setText("  • [✅ काउंटर सेल्स] " + item.name + " - " + String.format("%.3f", item.qty) + " kg");
-                    tvItem.setTextColor(0xFF4CAF50);
-                }
+                if (item.isAdvance) { tvItem.setText("  • [⚠️ एडवांस] " + item.name + " - " + String.format("%.3f", item.qty) + " kg"); tvItem.setTextColor(0xFFFF9800); }
+                else { tvItem.setText("  • [✅ काउंटर] " + item.name + " - " + String.format("%.3f", item.qty) + " kg"); tvItem.setTextColor(0xFF4CAF50); }
                 orderCard.addView(tvItem);
             }
             dashDynamicContent.addView(orderCard);
@@ -524,9 +523,8 @@ public class MainActivity extends Activity {
         double totalSales = 0;
         for (Order o : orders) totalSales += o.total;
         TextView tv = new TextView(this);
-        tv.setText("📊 काउंटर क्लोजिंग रिपोर्ट\n\n💰 कुल गल्ला कैश कलेक्शन: ₹" + String.format("%.2f", totalSales) + "\n🧾 कुल पर्चियां: " + orders.size());
-        tv.setTextSize(18);
-        tv.setPadding(20, 20, 20, 20);
+        tv.setText("📊 काउंटर रिपोर्ट\n\n💰 कुल गल्ला कैश कलेक्शन: ₹" + String.format("%.2f", totalSales) + "\n🧾 कुल पर्चियां: " + orders.size());
+        tv.setTextSize(18); tv.setPadding(20, 20, 20, 20);
         dashDynamicContent.addView(tv);
     }
 }
