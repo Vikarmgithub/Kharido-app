@@ -26,7 +26,7 @@ public class MainActivity extends Activity {
 
     static class Product {
         String id, name, emoji;
-        double price; // स्टॉक और इंग्लिश नाम हटा दिया गया है
+        double price;
         Product(String id, String name, double price, String emoji) {
             this.id = id; this.name = name; this.price = price; this.emoji = emoji;
         }
@@ -45,7 +45,7 @@ public class MainActivity extends Activity {
     static class Order {
         String id, customerName, time;
         ArrayList<OrderItem> items;
-        double total, received, due; // नकद गणना के वेरिएबल्स
+        double total, received, due;
         Order(String id, String customerName, ArrayList<OrderItem> items, double total, double received, double due) {
             this.id = id; this.customerName = customerName; this.items = items;
             this.total = total; this.received = received; this.due = due;
@@ -56,7 +56,6 @@ public class MainActivity extends Activity {
     private ArrayList<Product> products = new ArrayList<>();
     private ArrayList<Order> orders = new ArrayList<>();
     
-    // कार्ट डेटाबेस
     private HashMap<String, Double> regularCart = new HashMap<>();
     private HashMap<String, Double> advanceCart = new HashMap<>();
 
@@ -130,7 +129,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    // --- नया ऑर्डर काउंटर रेंडर ---
     private void renderShop() {
         shopProductList.removeAllViews();
         for (final Product p : products) {
@@ -225,7 +223,6 @@ public class MainActivity extends Activity {
 
             card.addView(inputContainer);
 
-            // लाइव कनवर्टर कैलकुलेशन लिस्नर्स
             etKg.addTextChangedListener(new TextWatcher() {
                 private boolean isChanging = false;
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -318,7 +315,6 @@ public class MainActivity extends Activity {
         btnFloatingCart.setText("🛒 कार्ट (" + totalItems + ")");
     }
 
-    // --- इन्वेंट्री टैब (मिठाई जोड़ने और पूरी तरह एडिट करने का ऑप्शन) ---
     private void renderInventoryTab() {
         dashDynamicContent.removeAllViews();
 
@@ -349,7 +345,6 @@ public class MainActivity extends Activity {
             tvInfo.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
             row.addView(tvInfo);
 
-            // ✏️ मिठाई सुधारें (नाम, भाव, फोटो सब एडिट होगा)
             Button btnEditProduct = new Button(this);
             btnEditProduct.setText("✏️ सुधारें");
             btnEditProduct.setTextSize(12);
@@ -362,7 +357,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    // --- ➕ नई मिठाई जोड़ने का फॉर्म ---
     private void showAddProductDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("➕ नई मिठाई का विवरण");
@@ -391,7 +385,6 @@ public class MainActivity extends Activity {
         builder.show();
     }
 
-    // --- ✏️ बनी हुई मिठाई को वापस एडिट करने का फॉर्म ---
     private void showEditProductDialog(final Product p) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("✏️ मिठाई का विवरण बदलें");
@@ -405,7 +398,7 @@ public class MainActivity extends Activity {
         final EditText etEmoji = new EditText(this); etEmoji.setText(p.emoji); layout.addView(etEmoji);
 
         builder.setView(layout);
-        builder.setMakeLineUnwrap(true);
+        // 🔥 यहाँ सुधारा गया है: त्रुटिपूर्ण 'setMakeLineUnwrap' विधि हटा दी गई है
         builder.setPositiveButton("बदलाव सेव करें", (dialog, which) -> {
             if (!etName.getText().toString().isEmpty() && !etPrice.getText().toString().isEmpty()) {
                 p.name = etName.getText().toString();
@@ -419,7 +412,6 @@ public class MainActivity extends Activity {
         builder.show();
     }
 
-    // --- 🛒 कार्ट समरी डायलॉग (संपादन, जमा और बाकी कैलकुलेटर के साथ) ---
     private void showCartDialog() {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("फाइनल बिल कैलकुलेटर");
@@ -431,7 +423,6 @@ public class MainActivity extends Activity {
         double total = 0;
         final ArrayList<OrderItem> tempItems = new ArrayList<>();
 
-        // रेगुलर कार्ट रेंडरिंग
         for (Map.Entry<String, Double> entry : regularCart.entrySet()) {
             for (final Product p : products) {
                 if (p.id.equals(entry.getKey())) {
@@ -452,7 +443,7 @@ public class MainActivity extends Activity {
                         b.setPositiveButton("ओके", (d, w) -> {
                             if(!in.getText().toString().isEmpty()) {
                                 regularCart.put(p.id, Double.parseDouble(in.getText().toString()));
-                                showCartDialog(); // कार्ट रिफ्रेश
+                                showCartDialog();
                             }
                         });
                         b.show();
@@ -463,7 +454,6 @@ public class MainActivity extends Activity {
             }
         }
 
-        // एडवांस कार्ट रेंडरिंग (एडिट बटन के साथ)
         for (Map.Entry<String, Double> entry : advanceCart.entrySet()) {
             for (final Product p : products) {
                 if (p.id.equals(entry.getKey())) {
@@ -501,7 +491,6 @@ public class MainActivity extends Activity {
 
         final TextView tvDue = new TextView(this); tvDue.setText("बाकी उधारी राशि: ₹0.00"); tvDue.setTextColor(Color.RED); tvDue.setTextSize(15); layout.addView(tvDue);
 
-        // लाइव रुपये कैलकुलेटर (टोटल में से माइनस होना)
         final double finalTotal = total;
         etReceived.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -534,7 +523,6 @@ public class MainActivity extends Activity {
         builder.show();
     }
 
-    // --- ऑर्डर्स रिपोर्ट टैब ---
     private void renderOrdersTab() {
         dashDynamicContent.removeAllViews();
         for (Order o : orders) {
