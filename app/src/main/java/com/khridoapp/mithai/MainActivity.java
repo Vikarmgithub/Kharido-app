@@ -2,8 +2,10 @@ package com.khridoapp.mithai;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -13,6 +15,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
@@ -24,11 +27,16 @@ import java.util.Map;
 
 public class MainActivity extends Activity {
 
+    // गैलरी रिक्वेस्ट कोड
+    private static final int PICK_IMAGE_REQUEST = 100;
+    private static String selectedImageUriStr = ""; // चुनी हुई फोटो का रास्ता सेव करने के लिए
+    private static ImageView previewImageView; // फॉर्म में फोटो देखने के लिए
+
     static class Product {
-        String id, name, emoji;
+        String id, name, imageUriStr; // अब इसमें इमेज का URI (रास्ता) स्टोर होगा
         double price;
-        Product(String id, String name, double price, String emoji) {
-            this.id = id; this.name = name; this.price = price; this.emoji = emoji;
+        Product(String id, String name, double price, String imageUriStr) {
+            this.id = id; this.name = name; this.price = price; this.imageUriStr = imageUriStr;
         }
     }
 
@@ -122,13 +130,37 @@ public class MainActivity extends Activity {
 
     private void initSeedProducts() {
         if (products.isEmpty()) {
-            products.add(new Product("p1", "गुलाब जामुन", 360, "🟤"));
-            products.add(new Product("p2", "काजू कतली", 820, "🔷"));
-            products.add(new Product("p3", "रसगुल्ला", 320, "⚪"));
-            products.add(new Product("p4", "बेसन लड्डू", 400, "🟡"));
+            // शुरुआत में खाली पाथ रखा है, आप गैलरी से सेट कर सकते हैं
+            products.add(new Product("p1", "गुलाब जामुन", 360, ""));
+            products.add(new Product("p2", "काजू कतली", 820, ""));
+            products.add(new Product("p3", "रसगुल्ला", 320, ""));
         }
     }
 
+    // --- मोबाइल गैलरी ओपन करने का फंक्शन ---
+    private void openGallery() {
+        Intent intent = new Intent(Intent.ACTION_PICK);
+        intent.setType("image/*");
+        startActivityForResult(intent, PICK_IMAGE_REQUEST);
+    }
+
+    // --- गैलरी से फोटो चुनने के बाद का रिजल्ट ---
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri imageUri = data.getData();
+            selectedImageUriStr = imageUri.toString(); // URI को स्ट्रिंग में बदला
+            
+            // अगर फॉर्म खुला है तो फोटो का प्रीव्यू दिखाएं
+            if (previewImageView != null) {
+                previewImageView.setImageURI(imageUri);
+                previewImageView.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    // --- नया ऑर्डर काउंटर रेंडर ---
     private void renderShop() {
         shopProductList.removeAllViews();
         for (final Product p : products) {
@@ -147,11 +179,19 @@ public class MainActivity extends Activity {
             headerRow.setOrientation(LinearLayout.HORIZONTAL);
             headerRow.setGravity(Gravity.CENTER_VERTICAL);
 
-            TextView tvEmoji = new TextView(this);
-            tvEmoji.setText(p.emoji);
-            tvEmoji.setTextSize(32);
-            tvEmoji.setPadding(0, 0, 16, 0);
-            headerRow.addView(tvEmoji);
+            // 🖼️ लोकल स्टोरेज से इमेज लोड करना
+            ImageView ivMithai = new ImageView(this);
+            LinearLayout.LayoutParams imgLp = new LinearLayout.LayoutParams(120, 120);
+            imgLp.setMargins(0, 0, 16, 0);
+            ivMithai.setLayoutParams(imgLp);
+            ivMithai.setScaleType(ImageView.ScaleType.CENTER_CROP);
+
+            if (p.imageUriStr != null && !p.imageUriStr.isEmpty()) {
+                ivMithai.setImageURI(Uri.parse(p.imageUriStr)); // लोकल पाथ से इमेज दिखाई
+            } else {
+                ivMithai.setImageResource(android.R.drawable.ic_menu_gallery); // डिफ़ॉल्ट फोटो
+            }
+            headerRow.addView(ivMithai);
 
             LinearLayout nameContainer = new LinearLayout(this);
             nameContainer.setOrientation(LinearLayout.VERTICAL);
@@ -172,6 +212,7 @@ public class MainActivity extends Activity {
             headerRow.addView(nameContainer);
             card.addView(headerRow);
 
+            // इनपुट बॉक्स (वजन और रुपये)
             LinearLayout inputContainer = new LinearLayout(this);
             inputContainer.setOrientation(LinearLayout.HORIZONTAL);
             inputContainer.setPadding(0, 12, 0, 12);
@@ -223,6 +264,7 @@ public class MainActivity extends Activity {
 
             card.addView(inputContainer);
 
+            // लाइव कनवर्टर कैलकुलेटर
             etKg.addTextChangedListener(new TextWatcher() {
                 private boolean isChanging = false;
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -315,6 +357,7 @@ public class MainActivity extends Activity {
         btnFloatingCart.setText("🛒 कार्ट (" + totalItems + ")");
     }
 
+    // --- इन्वेंट्री टैब (गैलरी से फोटो जोड़कर एडिट करने के साथ) ---
     private void renderInventoryTab() {
         dashDynamicContent.removeAllViews();
 
@@ -339,8 +382,19 @@ public class MainActivity extends Activity {
             lp.setMargins(0, 4, 0, 8);
             row.setLayoutParams(lp);
 
+            ImageView ivThumb = new ImageView(this);
+            LinearLayout.LayoutParams tLp = new LinearLayout.LayoutParams(80, 80);
+            tLp.setMargins(0,0,12,0);
+            ivThumb.setLayoutParams(tLp);
+            if (p.imageUriStr != null && !p.imageUriStr.isEmpty()) {
+                ivThumb.setImageURI(Uri.parse(p.imageUriStr));
+            } else {
+                ivThumb.setImageResource(android.R.drawable.ic_menu_gallery);
+            }
+            row.addView(ivThumb);
+
             TextView tvInfo = new TextView(this);
-            tvInfo.setText(p.emoji + " " + p.name + "\nभाव: ₹" + p.price + "/kg");
+            tvInfo.setText(p.name + "\nभाव: ₹" + p.price + "/kg");
             tvInfo.setTextSize(16);
             tvInfo.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
             row.addView(tvInfo);
@@ -357,7 +411,9 @@ public class MainActivity extends Activity {
         }
     }
 
+    // --- ➕ नई मिठाई जोड़ने का फॉर्म (गैलरी बटन के साथ) ---
     private void showAddProductDialog() {
+        selectedImageUriStr = ""; // रीसेट
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("➕ नई मिठाई का विवरण");
 
@@ -367,25 +423,36 @@ public class MainActivity extends Activity {
 
         final EditText etName = new EditText(this); etName.setHint("मिठाई का नाम लिखें"); layout.addView(etName);
         final EditText etPrice = new EditText(this); etPrice.setHint("भाव प्रति किलो (₹)"); etPrice.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); layout.addView(etPrice);
-        final EditText etEmoji = new EditText(this); etEmoji.setHint("फोटो इमोजी (उदा: 🥮, 🟥)"); layout.addView(etEmoji);
+        
+        Button btnSelectImg = new Button(this);
+        btnSelectImg.setText("🖼️ गैलरी से फोटो चुनें");
+        layout.addView(btnSelectImg);
+
+        previewImageView = new ImageView(this);
+        previewImageView.setLayoutParams(new LinearLayout.LayoutParams(150, 150));
+        previewImageView.setVisibility(View.GONE);
+        layout.addView(previewImageView);
+
+        btnSelectImg.setOnClickListener(v -> openGallery());
 
         builder.setView(layout);
         builder.setPositiveButton("सुरक्षित करें", (dialog, which) -> {
             String name = etName.getText().toString();
             String priceStr = etPrice.getText().toString();
-            String emoji = etEmoji.getText().toString().isEmpty() ? "🍡" : etEmoji.getText().toString();
 
             if (!name.isEmpty() && !priceStr.isEmpty()) {
-                products.add(new Product("p" + (products.size() + 1), name, Double.parseDouble(priceStr), emoji));
+                products.add(new Product("p" + (products.size() + 1), name, Double.parseDouble(priceStr), selectedImageUriStr));
                 renderInventoryTab();
-                Toast.makeText(MainActivity.this, "मिठाई जुड़ गई!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "मिठाई गैलरी फोटो के साथ सुरक्षित!", Toast.LENGTH_SHORT).show();
             }
         });
         builder.setNegativeButton("कैंसिल", null);
         builder.show();
     }
 
+    // --- ✏️ मिठाई एडिट करने का फॉर्म (गैलरी फोटो के साथ) ---
     private void showEditProductDialog(final Product p) {
+        selectedImageUriStr = p.imageUriStr; // पुरानी फोटो सेव रखें
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("✏️ मिठाई का विवरण बदलें");
 
@@ -395,15 +462,29 @@ public class MainActivity extends Activity {
 
         final EditText etName = new EditText(this); etName.setText(p.name); layout.addView(etName);
         final EditText etPrice = new EditText(this); etPrice.setText(String.valueOf(p.price)); etPrice.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); layout.addView(etPrice);
-        final EditText etEmoji = new EditText(this); etEmoji.setText(p.emoji); layout.addView(etEmoji);
+        
+        Button btnSelectImg = new Button(this);
+        btnSelectImg.setText("🖼️ नई फोटो बदलें");
+        layout.addView(btnSelectImg);
+
+        previewImageView = new ImageView(this);
+        previewImageView.setLayoutParams(new LinearLayout.LayoutParams(150, 150));
+        if (p.imageUriStr != null && !p.imageUriStr.isEmpty()) {
+            previewImageView.setImageURI(Uri.parse(p.imageUriStr));
+            previewImageView.setVisibility(View.VISIBLE);
+        } else {
+            previewImageView.setVisibility(View.GONE);
+        }
+        layout.addView(previewImageView);
+
+        btnSelectImg.setOnClickListener(v -> openGallery());
 
         builder.setView(layout);
-        // 🔥 यहाँ सुधारा गया है: त्रुटिपूर्ण 'setMakeLineUnwrap' विधि हटा दी गई है
         builder.setPositiveButton("बदलाव सेव करें", (dialog, which) -> {
             if (!etName.getText().toString().isEmpty() && !etPrice.getText().toString().isEmpty()) {
                 p.name = etName.getText().toString();
                 p.price = Double.parseDouble(etPrice.getText().toString());
-                p.emoji = etEmoji.getText().toString();
+                p.imageUriStr = selectedImageUriStr; // नया गैलरी पाथ सेव किया
                 renderInventoryTab();
                 Toast.makeText(MainActivity.this, "विवरण अपडेट हो गया!", Toast.LENGTH_SHORT).show();
             }
@@ -486,9 +567,7 @@ public class MainActivity extends Activity {
         }
 
         final TextView tvTotal = new TextView(this); tvTotal.setText("\nकुल बिल राशि: ₹" + String.format("%.2f", total)); tvTotal.setTextSize(16); tvTotal.setTypeface(null, Typeface.BOLD); layout.addView(tvTotal);
-
         final EditText etReceived = new EditText(this); etReceived.setHint("प्राप्त रुपये (Cash Received)"); etReceived.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); layout.addView(etReceived);
-
         final TextView tvDue = new TextView(this); tvDue.setText("बाकी उधारी राशि: ₹0.00"); tvDue.setTextColor(Color.RED); tvDue.setTextSize(15); layout.addView(tvDue);
 
         final double finalTotal = total;
