@@ -89,7 +89,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center"
-                    android:marginBottom="12dp">
+                    android:layout_marginBottom="12dp">
                     <Button android:id="@+id/tabInventory" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📦 इन्वेंट्री" android:textSize="11sp"/>
                     <Button android:id="@+id/tabOrders" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🧾 ऑर्डर्स" android:textSize="11sp" android:layout_marginHorizontal="4dp"/>
                     <Button android:id="@+id/tabAnalytics" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📊 Analytics" android:textSize="11sp"/>
