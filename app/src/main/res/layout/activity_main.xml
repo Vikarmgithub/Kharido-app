@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F4F6F9"> <!-- Premium Light Gray Background -->
+    android:background="#F4F6F9">
 
     <!-- Top Business Header -->
     <LinearLayout
@@ -43,6 +43,7 @@
         android:background="#FFFFFF"
         android:elevation="2dp">
         
+        <!-- यहाँ से cornerRadius हटा दिया गया है -->
         <Button
             android:id="@+id/btnShopView"
             android:layout_width="0dp"
@@ -53,7 +54,6 @@
             android:textColor="#FFFFFF"
             android:insetBottom="0dp"
             android:insetTop="0dp"
-            android:cornerRadius="0dp"
             android:textStyle="bold" />
 
         <Button
@@ -66,7 +66,6 @@
             android:textColor="#6200EE"
             android:insetBottom="0dp"
             android:insetTop="0dp"
-            android:cornerRadius="0dp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -76,7 +75,7 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <!-- ORDER VIEW (WITH PHOTO & LIVE CONVERTER) -->
+        <!-- ORDER VIEW -->
         <ScrollView
             android:id="@+id/shopContainer"
             android:layout_width="match_parent"
