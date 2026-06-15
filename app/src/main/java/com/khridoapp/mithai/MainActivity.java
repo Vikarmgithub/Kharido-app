@@ -21,19 +21,21 @@ import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends Activity {
 
-    // गैलरी रिक्वेस्ट कोड
     private static final int PICK_IMAGE_REQUEST = 100;
-    private static String selectedImageUriStr = ""; // चुनी हुई फोटो का रास्ता सेव करने के लिए
-    private static ImageView previewImageView; // फॉर्म में फोटो देखने के लिए
+    private static String selectedImageUriStr = ""; 
+    private static ImageView previewImageView; 
 
     static class Product {
-        String id, name, imageUriStr; // अब इसमें इमेज का URI (रास्ता) स्टोर होगा
+        String id, name, imageUriStr; 
         double price;
         Product(String id, String name, double price, String imageUriStr) {
             this.id = id; this.name = name; this.price = price; this.imageUriStr = imageUriStr;
@@ -51,13 +53,16 @@ public class MainActivity extends Activity {
     }
 
     static class Order {
-        String id, customerName, time;
+        String id, customerName, time; // 'time' में ऑटोमैटिक डेट और टाइम सेव होगा
         ArrayList<OrderItem> items;
         double total, received, due;
         Order(String id, String customerName, ArrayList<OrderItem> items, double total, double received, double due) {
             this.id = id; this.customerName = customerName; this.items = items;
             this.total = total; this.received = received; this.due = due;
-            this.time = java.text.DateFormat.getDateTimeInstance().format(new java.util.Date());
+            
+            // 🔥 ऑर्डर सेव होने की तारीख और सटीक समय ऑटोमैटिक कैप्चर करने का लॉजिक
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy, hh:mm a", Locale.getDefault());
+            this.time = sdf.format(new Date()); 
         }
     }
 
@@ -130,29 +135,24 @@ public class MainActivity extends Activity {
 
     private void initSeedProducts() {
         if (products.isEmpty()) {
-            // शुरुआत में खाली पाथ रखा है, आप गैलरी से सेट कर सकते हैं
             products.add(new Product("p1", "गुलाब जामुन", 360, ""));
             products.add(new Product("p2", "काजू कतली", 820, ""));
             products.add(new Product("p3", "रसगुल्ला", 320, ""));
         }
     }
 
-    // --- मोबाइल गैलरी ओपन करने का फंक्शन ---
     private void openGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK);
         intent.setType("image/*");
         startActivityForResult(intent, PICK_IMAGE_REQUEST);
     }
 
-    // --- गैलरी से फोटो चुनने के बाद का रिजल्ट ---
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri imageUri = data.getData();
-            selectedImageUriStr = imageUri.toString(); // URI को स्ट्रिंग में बदला
-            
-            // अगर फॉर्म खुला है तो फोटो का प्रीव्यू दिखाएं
+            selectedImageUriStr = imageUri.toString(); 
             if (previewImageView != null) {
                 previewImageView.setImageURI(imageUri);
                 previewImageView.setVisibility(View.VISIBLE);
@@ -160,7 +160,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    // --- नया ऑर्डर काउंटर रेंडर ---
     private void renderShop() {
         shopProductList.removeAllViews();
         for (final Product p : products) {
@@ -179,7 +178,6 @@ public class MainActivity extends Activity {
             headerRow.setOrientation(LinearLayout.HORIZONTAL);
             headerRow.setGravity(Gravity.CENTER_VERTICAL);
 
-            // 🖼️ लोकल स्टोरेज से इमेज लोड करना
             ImageView ivMithai = new ImageView(this);
             LinearLayout.LayoutParams imgLp = new LinearLayout.LayoutParams(120, 120);
             imgLp.setMargins(0, 0, 16, 0);
@@ -187,9 +185,9 @@ public class MainActivity extends Activity {
             ivMithai.setScaleType(ImageView.ScaleType.CENTER_CROP);
 
             if (p.imageUriStr != null && !p.imageUriStr.isEmpty()) {
-                ivMithai.setImageURI(Uri.parse(p.imageUriStr)); // लोकल पाथ से इमेज दिखाई
+                ivMithai.setImageURI(Uri.parse(p.imageUriStr));
             } else {
-                ivMithai.setImageResource(android.R.drawable.ic_menu_gallery); // डिफ़ॉल्ट फोटो
+                ivMithai.setImageResource(android.R.drawable.ic_menu_gallery);
             }
             headerRow.addView(ivMithai);
 
@@ -212,7 +210,6 @@ public class MainActivity extends Activity {
             headerRow.addView(nameContainer);
             card.addView(headerRow);
 
-            // इनपुट बॉक्स (वजन और रुपये)
             LinearLayout inputContainer = new LinearLayout(this);
             inputContainer.setOrientation(LinearLayout.HORIZONTAL);
             inputContainer.setPadding(0, 12, 0, 12);
@@ -264,7 +261,6 @@ public class MainActivity extends Activity {
 
             card.addView(inputContainer);
 
-            // लाइव कनवर्टर कैलकुलेटर
             etKg.addTextChangedListener(new TextWatcher() {
                 private boolean isChanging = false;
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -357,7 +353,6 @@ public class MainActivity extends Activity {
         btnFloatingCart.setText("🛒 कार्ट (" + totalItems + ")");
     }
 
-    // --- इन्वेंट्री टैब (गैलरी से फोटो जोड़कर एडिट करने के साथ) ---
     private void renderInventoryTab() {
         dashDynamicContent.removeAllViews();
 
@@ -411,9 +406,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    // --- ➕ नई मिठाई जोड़ने का फॉर्म (गैलरी बटन के साथ) ---
     private void showAddProductDialog() {
-        selectedImageUriStr = ""; // रीसेट
+        selectedImageUriStr = ""; 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("➕ नई मिठाई का विवरण");
 
@@ -443,16 +437,15 @@ public class MainActivity extends Activity {
             if (!name.isEmpty() && !priceStr.isEmpty()) {
                 products.add(new Product("p" + (products.size() + 1), name, Double.parseDouble(priceStr), selectedImageUriStr));
                 renderInventoryTab();
-                Toast.makeText(MainActivity.this, "मिठाई गैलरी फोटो के साथ सुरक्षित!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "मिठाई सुरक्षित हो गई!", Toast.LENGTH_SHORT).show();
             }
         });
         builder.setNegativeButton("कैंसिल", null);
         builder.show();
     }
 
-    // --- ✏️ मिठाई एडिट करने का फॉर्म (गैलरी फोटो के साथ) ---
     private void showEditProductDialog(final Product p) {
-        selectedImageUriStr = p.imageUriStr; // पुरानी फोटो सेव रखें
+        selectedImageUriStr = p.imageUriStr; 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("✏️ मिठाई का विवरण बदलें");
 
@@ -484,7 +477,7 @@ public class MainActivity extends Activity {
             if (!etName.getText().toString().isEmpty() && !etPrice.getText().toString().isEmpty()) {
                 p.name = etName.getText().toString();
                 p.price = Double.parseDouble(etPrice.getText().toString());
-                p.imageUriStr = selectedImageUriStr; // नया गैलरी पाथ सेव किया
+                p.imageUriStr = selectedImageUriStr; 
                 renderInventoryTab();
                 Toast.makeText(MainActivity.this, "विवरण अपडेट हो गया!", Toast.LENGTH_SHORT).show();
             }
@@ -602,16 +595,42 @@ public class MainActivity extends Activity {
         builder.show();
     }
 
+    // --- ऑर्डर्स रिपोर्ट टैब (यहाँ ऑटोमैटिक तारीख और समय दिखेगा) ---
     private void renderOrdersTab() {
         dashDynamicContent.removeAllViews();
+        if (orders.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("कोई रिकॉर्ड नहीं मिला।");
+            empty.setPadding(20, 20, 20, 20);
+            dashDynamicContent.addView(empty);
+            return;
+        }
+
         for (Order o : orders) {
-            LinearLayout orderCard = new LinearLayout(this); orderCard.setOrientation(LinearLayout.VERTICAL); orderCard.setPadding(16, 16, 16, 16); orderCard.setBackgroundColor(Color.WHITE);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT); lp.setMargins(0, 4, 0, 12); orderCard.setLayoutParams(lp);
+            LinearLayout orderCard = new LinearLayout(this); 
+            orderCard.setOrientation(LinearLayout.VERTICAL); 
+            orderCard.setPadding(24, 24, 24, 24); 
+            orderCard.setBackgroundColor(Color.WHITE);
             
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT); 
+            lp.setMargins(0, 4, 0, 16); 
+            orderCard.setLayoutParams(lp);
+            
+            // 📅 तारीख और समय डिस्प्ले (Professional Style)
+            TextView tvTime = new TextView(this);
+            tvTime.setText("📅 " + o.time); 
+            tvTime.setTextSize(12);
+            tvTime.setTextColor(Color.GRAY);
+            tvTime.setPadding(0, 0, 0, 6);
+            orderCard.addView(tvTime);
+
             TextView tvHeader = new TextView(this); 
             tvHeader.setText("🧾 ग्राहक: " + o.customerName + "\n💰 कुल बिल: ₹" + String.format("%.2f", o.total) + " | प्राप्त: ₹" + String.format("%.2f", o.received) + "\n🔴 बाकी (Due): ₹" + String.format("%.2f", o.due));
             tvHeader.setTypeface(null, Typeface.BOLD);
+            tvHeader.setTextColor(Color.BLACK);
+            tvHeader.setTextSize(15);
             orderCard.addView(tvHeader);
+            
             dashDynamicContent.addView(orderCard);
         }
     }
