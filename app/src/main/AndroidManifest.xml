@@ -2,7 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.khridoapp.mithai">
 
-    <application
+ <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+ <application
         android:allowBackup="true"
         android:label="श्री मिष्ठान भंडार"
         android:supportsRtl="true"
