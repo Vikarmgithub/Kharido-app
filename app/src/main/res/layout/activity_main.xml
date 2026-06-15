@@ -35,7 +35,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Professional Navigation Tabs -->
+    <!-- Navigation Tabs -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -43,7 +43,6 @@
         android:background="#FFFFFF"
         android:elevation="2dp">
         
-        <!-- यहाँ से cornerRadius हटा दिया गया है -->
         <Button
             android:id="@+id/btnShopView"
             android:layout_width="0dp"
@@ -107,7 +106,7 @@
                     android:orientation="horizontal"
                     android:gravity="center"
                     android:layout_marginBottom="12dp">
-                    <Button android:id="@+id/tabInventory" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📦 स्टॉक" android:textSize="12sp" android:backgroundTint="#03DAC5" android:textColor="#000000"/>
+                    <Button android:id="@+id/tabInventory" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📦 स्टॉक मैनेजमेंट" android:textSize="12sp" android:backgroundTint="#03DAC5" android:textColor="#000000"/>
                     <Button android:id="@+id/tabOrders" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🧾 ऑर्डर्स" android:textSize="12sp" android:layout_marginHorizontal="6dp" android:backgroundTint="#E0E0E0" android:textColor="#000000"/>
                     <Button android:id="@+id/tabAnalytics" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📊 कमाई" android:textSize="12sp" android:backgroundTint="#E0E0E0" android:textColor="#000000"/>
                 </LinearLayout>
@@ -120,7 +119,7 @@
             </LinearLayout>
         </ScrollView>
 
-        <!-- Floating Cart Action Button -->
+        <!-- Floating Cart Button -->
         <Button
             android:id="@+id/btnFloatingCart"
             android:layout_width="wrap_content"
