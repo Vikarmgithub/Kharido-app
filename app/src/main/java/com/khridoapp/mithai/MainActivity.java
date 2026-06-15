@@ -5,11 +5,9 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -80,7 +78,7 @@ public class MainActivity extends Activity {
         btnDashView = findViewById(R.id.btnDashView);
         btnFloatingCart = findViewById(R.id.btnFloatingCart);
 
-        // सीड डेटा लोड करना
+        // डेटा लोड करना
         initSeedProducts();
         renderShop();
         updateCartButton();
@@ -110,7 +108,6 @@ public class MainActivity extends Activity {
     }
 
     private void initSeedProducts() {
-        // अगर SharedPreferences में पहले से डेटा नहीं है तो बेसिक प्रोडक्ट्स जोड़ें
         if (products.isEmpty()) {
             products.add(new Product("p1", "गुलाब जामुन", "Gulab Jamun", "बंगाली", 360, 12));
             products.add(new Product("p2", "काजू कतली", "Kaju Katli", "बर्फी", 820, 6));
@@ -123,11 +120,11 @@ public class MainActivity extends Activity {
     // --- दुकान रेंडर लॉजिक ---
     private void renderShop() {
         shopProductList.removeAllViews();
-        for (Product p : products) {
+        for (final Product p : products) {
             TextView tv = new TextView(this);
-            tv.setText(p.name + " (" + p.nameEn + ")\nقیمत: ₹" + p.price + "/किलो  | स्टॉक: " + p.stock + " किलो");
+            tv.setText(p.name + " (" + p.nameEn + ")\nकीमत: ₹" + p.price + "/किलो  | स्टॉक: " + p.stock + " किलो");
             tv.setPadding(15, 15, 15, 5);
-            tv.setTextSize(16sp);
+            tv.setTextSize(16); // सुधारा गया: sp हटाया
 
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -138,18 +135,18 @@ public class MainActivity extends Activity {
                 double currentQty = cart.containsKey(p.id) ? cart.get(p.id) : 0;
                 if (currentQty < p.stock) {
                     cart.put(p.id, currentQty + 0.25);
-                    Toast.makeText(this, p.name + " जोड़ा गया", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, p.name + " जोड़ा गया", Toast.LENGTH_SHORT).show();
                     updateCartButton();
                 } else {
-                    Toast.makeText(this, "स्टॉक समाप्त!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "स्टॉक समाप्त!", Toast.LENGTH_SHORT).show();
                 }
             });
 
             Button btnAdvance = new Button(this);
             btnAdvance.setText("📋 एडवांस ऑर्डर");
             btnAdvance.setOnClickListener(v -> {
-                advanceCart.put(p.id, 5.0); // डिफ़ॉल्ट 5 किलो एडवांस बुकिंग
-                Toast.makeText(this, p.name + " एडवांस ऑर्डर में जोड़ा गया", Toast.LENGTH_SHORT).show();
+                advanceCart.put(p.id, 5.0);
+                Toast.makeText(MainActivity.this, p.name + " एडवांस में जोड़ा गया", Toast.LENGTH_SHORT).show();
                 updateCartButton();
             });
 
@@ -190,10 +187,10 @@ public class MainActivity extends Activity {
 
         TextView totalTv = new TextView(this);
         totalTv.setText("\nकुल राशि: ₹" + total);
-        totalTv.setTextSize(18sp);
+        totalTv.setTextSize(18); // सुधारा गया
         layout.addView(totalTv);
 
-        EditText nameInput = new EditText(this);
+        final EditText nameInput = new EditText(this);
         nameInput.setHint("ग्राहक का नाम दर्ज करें *");
         layout.addView(nameInput);
 
@@ -222,7 +219,7 @@ public class MainActivity extends Activity {
         dashDynamicContent.removeAllViews();
         TextView title = new TextView(this);
         title.setText("📦 इन्वेंटरी स्टॉक मैनेजमेंट\n");
-        title.setTextSize(18sp);
+        title.setTextSize(18); // सुधारा गया
         dashDynamicContent.addView(title);
 
         for (Product p : products) {
@@ -236,7 +233,7 @@ public class MainActivity extends Activity {
         dashDynamicContent.removeAllViews();
         TextView title = new TextView(this);
         title.setText("🧾 लाइव ऑर्डर्स सूची\n");
-        title.setTextSize(18sp);
+        title.setTextSize(18); // सुधारा गया
         dashDynamicContent.addView(title);
 
         if (orders.isEmpty()) {
@@ -256,7 +253,7 @@ public class MainActivity extends Activity {
         dashDynamicContent.removeAllViews();
         TextView title = new TextView(this);
         title.setText("📊 बिज़नेस सेल्स रिपोर्ट (Analytics)\n");
-        title.setTextSize(18sp);
+        title.setTextSize(18); // सुधारा गया
         dashDynamicContent.addView(title);
 
         double totalSales = 0;
@@ -266,7 +263,7 @@ public class MainActivity extends Activity {
 
         TextView salesTv = new TextView(this);
         salesTv.setText("कुल बिक्री: ₹" + totalSales + "\nकुल ऑर्डर्स: " + orders.size());
-        salesTv.setTextSize(16sp);
+        salesTv.setTextSize(16); // सुधारा गया: 16sp को 16 किया
         dashDynamicContent.addView(salesTv);
     }
 }
