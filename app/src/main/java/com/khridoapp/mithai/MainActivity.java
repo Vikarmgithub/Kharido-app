@@ -200,10 +200,10 @@ private String tempSelectedImageUri = "";
                 dashboardContainer.setVisibility(View.GONE);
 
                 // Update Button Colors
-                btnShopView.setBackgroundColor(Color.parseColor("#6200EE"));
-                btnShopView.setTextColor(Color.WHITE);
-                btnDashView.setBackgroundColor(Color.WHITE);
-                btnDashView.setTextColor(Color.parseColor("#6200EE"));
+                btnShopView.setBackground(roundedBg(Color.parseColor("#EEF2FF"), 10));
+                btnShopView.setTextColor(Color.parseColor("#4F46E5"));
+                btnDashView.setBackground(roundedBg(0x00000000, 10));
+                btnDashView.setTextColor(Color.parseColor("#64748B"));
 
                 // Refresh Shop
                 renderShop();
@@ -217,10 +217,10 @@ private String tempSelectedImageUri = "";
                 dashboardContainer.setVisibility(View.VISIBLE);
 
                 // Update Button Colors
-                btnDashView.setBackgroundColor(Color.parseColor("#6200EE"));
-                btnDashView.setTextColor(Color.WHITE);
-                btnShopView.setBackgroundColor(Color.WHITE);
-                btnShopView.setTextColor(Color.parseColor("#6200EE"));
+                btnDashView.setBackground(roundedBg(Color.parseColor("#EEF2FF"), 10));
+                btnDashView.setTextColor(Color.parseColor("#4F46E5"));
+                btnShopView.setBackground(roundedBg(0x00000000, 10));
+                btnShopView.setTextColor(Color.parseColor("#64748B"));
 
                 // Show Inventory by default
                 if (currentSubTab.equals("Inventory")) {
@@ -332,113 +332,200 @@ private String tempSelectedImageUri = "";
         shopProductList.removeAllViews();
 
         for (final Product p : products) {
-            // Product Card Container
+            // ── Premium Card ──
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
-            LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
-            cardParams.setMargins(0, 8, 0, 12);
-            card.setLayoutParams(cardParams);
-            card.setBackgroundColor(Color.WHITE);
-            card.setPadding(16, 16, 16, 16);
-            card.setElevation(4f);
+            LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
+            cardLp.setMargins(0, 0, 0, dp(14));
+            card.setLayoutParams(cardLp);
+            card.setBackground(roundedBg(0xFFFFFFFF, 16));
+            card.setPadding(dp(16), dp(16), dp(16), dp(16));
+            card.setElevation(dp(3));
 
-            // Header Row: Image + Name
+            // ── Header: Image + Name + Rate badge ──
             LinearLayout headerRow = new LinearLayout(this);
             headerRow.setOrientation(LinearLayout.HORIZONTAL);
             headerRow.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(-1, -2);
-            headerParams.setMargins(0, 0, 0, 12);
-            headerRow.setLayoutParams(headerParams);
+            LinearLayout.LayoutParams hLp = new LinearLayout.LayoutParams(-1, -2);
+            hLp.setMargins(0, 0, 0, dp(14));
+            headerRow.setLayoutParams(hLp);
 
-            // Product Image
+            // Image with rounded bg
+            LinearLayout imgWrapper = new LinearLayout(this);
+            imgWrapper.setBackground(roundedBg(0xFFEEF2FF, 12));
+            LinearLayout.LayoutParams iwLp = new LinearLayout.LayoutParams(dp(64), dp(64));
+            iwLp.setMargins(0, 0, dp(14), 0);
+            imgWrapper.setLayoutParams(iwLp);
+            imgWrapper.setGravity(Gravity.CENTER);
+
             ImageView imageView = new ImageView(this);
-            LinearLayout.LayoutParams imgParams = new LinearLayout.LayoutParams(100, 100);
-            imgParams.setMargins(0, 0, 12, 0);
-            imageView.setLayoutParams(imgParams);
+            imageView.setLayoutParams(new LinearLayout.LayoutParams(dp(52), dp(52)));
             imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
             if (!p.imageUriStr.isEmpty()) {
                 imageView.setImageURI(Uri.parse(p.imageUriStr));
+                ((android.graphics.drawable.GradientDrawable) imgWrapper.getBackground()).setColor(0xFFE2E8F0);
             } else {
                 imageView.setImageResource(android.R.drawable.ic_menu_gallery);
             }
-            imageView.setBackgroundColor(Color.parseColor("#E0E0E0"));
-            headerRow.addView(imageView);
+            imgWrapper.addView(imageView);
+            headerRow.addView(imgWrapper);
 
-            // Product Info
-            LinearLayout infoContainer = new LinearLayout(this);
-            infoContainer.setOrientation(LinearLayout.VERTICAL);
-            infoContainer.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+            // Name + Rate
+            LinearLayout infoCol = new LinearLayout(this);
+            infoCol.setOrientation(LinearLayout.VERTICAL);
+            infoCol.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
 
-            TextView productName = new TextView(this);
-            productName.setText(isHindi ? p.name : p.nameEn);
-            productName.setTextSize(16);
-            productName.setTypeface(null, Typeface.BOLD);
-            productName.setTextColor(Color.BLACK);
-            infoContainer.addView(productName);
+            TextView tvName = new TextView(this);
+            tvName.setText(isHindi ? p.name : p.nameEn);
+            tvName.setTextSize(16);
+            tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+            tvName.setTextColor(Color.parseColor("#1E293B"));
+            infoCol.addView(tvName);
 
-            TextView priceText = new TextView(this);
-            priceText.setText("₹" + p.price + " प्रति यूनिट");
-            priceText.setTextSize(13);
-            priceText.setTextColor(Color.parseColor("#666666"));
-            LinearLayout.LayoutParams priceParams = new LinearLayout.LayoutParams(-2, -2);
-            priceParams.topMargin = 4;
-            priceText.setLayoutParams(priceParams);
-            infoContainer.addView(priceText);
+            // Rate pill badge
+            LinearLayout ratePill = new LinearLayout(this);
+            ratePill.setBackground(roundedBg(0xFFEEF2FF, 20));
+            ratePill.setPadding(dp(10), dp(3), dp(10), dp(3));
+            LinearLayout.LayoutParams rpLp = new LinearLayout.LayoutParams(-2, -2);
+            rpLp.topMargin = dp(6);
+            ratePill.setLayoutParams(rpLp);
+            TextView tvRate = new TextView(this);
+            tvRate.setText("₹" + (int) p.price + " / kg");
+            tvRate.setTextSize(12);
+            tvRate.setTextColor(Color.parseColor("#4F46E5"));
+            tvRate.setTypeface(null, android.graphics.Typeface.BOLD);
+            ratePill.addView(tvRate);
+            infoCol.addView(ratePill);
 
-            headerRow.addView(infoContainer);
+            headerRow.addView(infoCol);
             card.addView(headerRow);
 
-            // Input Row: Quantity + Button
+            // ── Qty + Price inputs (linked) ──
             LinearLayout inputRow = new LinearLayout(this);
             inputRow.setOrientation(LinearLayout.HORIZONTAL);
-            inputRow.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams irLp = new LinearLayout.LayoutParams(-1, -2);
+            irLp.setMargins(0, 0, 0, dp(12));
+            inputRow.setLayoutParams(irLp);
 
-            // Quantity Input
             final EditText qtyInput = new EditText(this);
-            qtyInput.setHint("मात्रा (kg/pcs)");
+            qtyInput.setHint(isHindi ? "मात्रा (kg)" : "Qty (kg)");
+            qtyInput.setHintTextColor(Color.parseColor("#94A3B8"));
             qtyInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-            LinearLayout.LayoutParams qtyParams = new LinearLayout.LayoutParams(0, 44, 1.2f);
-            qtyParams.setMargins(0, 0, 8, 0);
-            qtyInput.setLayoutParams(qtyParams);
-            qtyInput.setPadding(8, 8, 8, 8);
-            qtyInput.setBackgroundColor(Color.parseColor("#F5F5F5"));
-            inputRow.addView(qtyInput);
+            qtyInput.setBackground(roundedBgWithStroke(0xFFF8FAFC, 10, Color.parseColor("#E2E8F0")));
+            LinearLayout.LayoutParams qLp = new LinearLayout.LayoutParams(0, dp(46), 1f);
+            qLp.setMargins(0, 0, dp(8), 0);
+            qtyInput.setLayoutParams(qLp);
+            qtyInput.setPadding(dp(12), 0, dp(12), 0);
+            qtyInput.setTextColor(Color.parseColor("#1E293B"));
+            qtyInput.setTextSize(14);
+            qtyInput.setGravity(Gravity.CENTER_VERTICAL);
 
-            // Add to Cart Button
-            Button addBtn = new Button(this);
-            addBtn.setText("🛒 जोड़ें");
-            addBtn.setTextSize(12);
-            addBtn.setTextColor(Color.WHITE);
-            addBtn.setBackgroundColor(Color.parseColor("#6200EE"));
-            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(0, 44, 1f);
-            addBtn.setLayoutParams(btnParams);
-            addBtn.setOnClickListener(v -> {
-                String qtyStr = qtyInput.getText().toString().trim();
-                if (qtyStr.isEmpty()) {
-                    Toast.makeText(MainActivity.this, "मात्रा दर्ज करें!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                try {
-                    double qty = Double.parseDouble(qtyStr);
-                    if (qty <= 0) {
-                        Toast.makeText(MainActivity.this, "मात्रा 0 से अधिक होनी चाहिए!", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    regularCart.put(p.id, qty);
-                    updateCartButton();
-                    qtyInput.setText("");
-                    Toast.makeText(MainActivity.this, p.name + " कार्ट में जोड़ दी गई!", Toast.LENGTH_SHORT).show();
-                } catch (NumberFormatException e) {
-                    Toast.makeText(MainActivity.this, "सही मात्रा दर्ज करें!", Toast.LENGTH_SHORT).show();
+            final EditText priceInput = new EditText(this);
+            priceInput.setHint(isHindi ? "कीमत (₹)" : "Price (₹)");
+            priceInput.setHintTextColor(Color.parseColor("#94A3B8"));
+            priceInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            priceInput.setBackground(roundedBgWithStroke(0xFFF8FAFC, 10, Color.parseColor("#E2E8F0")));
+            priceInput.setLayoutParams(new LinearLayout.LayoutParams(0, dp(46), 1f));
+            priceInput.setPadding(dp(12), 0, dp(12), 0);
+            priceInput.setTextColor(Color.parseColor("#1E293B"));
+            priceInput.setTextSize(14);
+            priceInput.setGravity(Gravity.CENTER_VERTICAL);
+
+            final boolean[] qc = {false}, pc = {false};
+
+            qtyInput.addTextChangedListener(new android.text.TextWatcher() {
+                public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+                public void onTextChanged(CharSequence s, int a, int b, int c) {}
+                public void afterTextChanged(android.text.Editable s) {
+                    if (pc[0]) return;
+                    qc[0] = true;
+                    String v = s.toString().trim();
+                    if (!v.isEmpty()) {
+                        try { priceInput.setText(String.valueOf((int)(Double.parseDouble(v) * p.price))); }
+                        catch (NumberFormatException ignored) {}
+                    } else { priceInput.setText(""); }
+                    qc[0] = false;
                 }
             });
-            inputRow.addView(addBtn);
+
+            priceInput.addTextChangedListener(new android.text.TextWatcher() {
+                public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+                public void onTextChanged(CharSequence s, int a, int b, int c) {}
+                public void afterTextChanged(android.text.Editable s) {
+                    if (qc[0]) return;
+                    pc[0] = true;
+                    String v = s.toString().trim();
+                    if (!v.isEmpty() && p.price > 0) {
+                        try {
+                            double q = Double.parseDouble(v) / p.price;
+                            qtyInput.setText(String.format("%.3f", q).replaceAll("\\.?0+$", ""));
+                        } catch (NumberFormatException ignored) {}
+                    } else { qtyInput.setText(""); }
+                    pc[0] = false;
+                }
+            });
+
+            inputRow.addView(qtyInput);
+            inputRow.addView(priceInput);
             card.addView(inputRow);
 
+            // ── Premium Buttons ──
+            LinearLayout btnRow = new LinearLayout(this);
+            btnRow.setOrientation(LinearLayout.HORIZONTAL);
+            btnRow.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+
+            Button addBtn = new Button(this);
+            addBtn.setText(isHindi ? "🛒 कार्ट में जोड़ें" : "🛒 Add to Cart");
+            addBtn.setTextSize(12);
+            addBtn.setTextColor(Color.WHITE);
+            addBtn.setBackground(roundedBg(Color.parseColor("#4F46E5"), 10));
+            addBtn.setTypeface(null, android.graphics.Typeface.BOLD);
+            LinearLayout.LayoutParams addLp = new LinearLayout.LayoutParams(0, dp(44), 1f);
+            addLp.setMargins(0, 0, dp(8), 0);
+            addBtn.setLayoutParams(addLp);
+            addBtn.setInsetTop(0); addBtn.setInsetBottom(0);
+
+            Button advBtn = new Button(this);
+            advBtn.setText(isHindi ? "📦 एडवांस" : "📦 Advance");
+            advBtn.setTextSize(12);
+            advBtn.setTextColor(Color.parseColor("#1E293B"));
+            advBtn.setBackground(roundedBg(Color.parseColor("#F59E0B"), 10));
+            advBtn.setTypeface(null, android.graphics.Typeface.BOLD);
+            advBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(44), 1f));
+            advBtn.setInsetTop(0); advBtn.setInsetBottom(0);
+
+            addBtn.setOnClickListener(v -> {
+                String qtyStr = qtyInput.getText().toString().trim();
+                if (qtyStr.isEmpty()) { Toast.makeText(MainActivity.this, isHindi ? "मात्रा दर्ज करें!" : "Enter qty!", Toast.LENGTH_SHORT).show(); return; }
+                try {
+                    double qty = Double.parseDouble(qtyStr);
+                    if (qty <= 0) { Toast.makeText(MainActivity.this, isHindi ? "मात्रा 0 से अधिक होनी चाहिए!" : "Qty must be > 0", Toast.LENGTH_SHORT).show(); return; }
+                    regularCart.put(p.id, qty);
+                    updateCartButton();
+                    qtyInput.setText(""); priceInput.setText("");
+                    Toast.makeText(MainActivity.this, p.name + (isHindi ? " ✅ कार्ट में जोड़ दी!" : " ✅ added to cart!"), Toast.LENGTH_SHORT).show();
+                } catch (NumberFormatException e) { Toast.makeText(MainActivity.this, isHindi ? "सही मात्रा दर्ज करें!" : "Enter valid qty!", Toast.LENGTH_SHORT).show(); }
+            });
+
+            advBtn.setOnClickListener(v -> {
+                String qtyStr = qtyInput.getText().toString().trim();
+                if (qtyStr.isEmpty()) { Toast.makeText(MainActivity.this, isHindi ? "मात्रा दर्ज करें!" : "Enter qty!", Toast.LENGTH_SHORT).show(); return; }
+                try {
+                    double qty = Double.parseDouble(qtyStr);
+                    if (qty <= 0) { Toast.makeText(MainActivity.this, isHindi ? "मात्रा 0 से अधिक होनी चाहिए!" : "Qty must be > 0", Toast.LENGTH_SHORT).show(); return; }
+                    advanceCart.put(p.id, qty);
+                    updateCartButton();
+                    qtyInput.setText(""); priceInput.setText("");
+                    Toast.makeText(MainActivity.this, p.name + (isHindi ? " 📦 एडवांस में जोड़ा!" : " 📦 added to advance!"), Toast.LENGTH_SHORT).show();
+                } catch (NumberFormatException e) { Toast.makeText(MainActivity.this, isHindi ? "सही मात्रा दर्ज करें!" : "Enter valid qty!", Toast.LENGTH_SHORT).show(); }
+            });
+
+            btnRow.addView(addBtn);
+            btnRow.addView(advBtn);
+            card.addView(btnRow);
             shopProductList.addView(card);
         }
     }
-
     private void renderInventoryTab() {
     if (dashDynamicContent == null) return;
     dashDynamicContent.removeAllViews();
@@ -446,7 +533,8 @@ private String tempSelectedImageUri = "";
     Button addBtn = new Button(this);
     addBtn.setText("➕ नई मिठाई जोड़ें");
     addBtn.setTextColor(Color.WHITE);
-    addBtn.setBackgroundColor(Color.parseColor("#6200EE"));
+    addBtn.setBackground(roundedBg(Color.parseColor("#4F46E5"), 10));
+    addBtn.setTypeface(null, android.graphics.Typeface.BOLD);
     LinearLayout.LayoutParams addP = new LinearLayout.LayoutParams(-1, -2);
     addP.setMargins(0, 0, 0, 16);
     addBtn.setLayoutParams(addP);
@@ -456,12 +544,12 @@ private String tempSelectedImageUri = "";
     for (Product p : products) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setBackgroundColor(Color.WHITE);
-        row.setPadding(16, 16, 16, 16);
+        row.setBackground(roundedBg(0xFFFFFFFF, 12));
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setElevation(3f);
+        row.setElevation(dp(3));
         LinearLayout.LayoutParams rowP = new LinearLayout.LayoutParams(-1, -2);
-        rowP.setMargins(0, 0, 0, 10);
+        rowP.setMargins(0, 0, 0, dp(10));
         row.setLayoutParams(rowP);
 
         // Mini Photo
@@ -1073,6 +1161,33 @@ private void showUpdateDueDialog(Order o) {
         return true;
     }
 
+
+    private int dp(float dp) {
+        return (int)(dp * getResources().getDisplayMetrics().density);
+    }
+
+    private android.graphics.drawable.GradientDrawable roundedBg(int color, float radiusDp) {
+        android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+        gd.setColor(color);
+        gd.setCornerRadius(dp(radiusDp));
+        return gd;
+    }
+
+    private android.graphics.drawable.GradientDrawable roundedBgWithStroke(int color, float radiusDp, int strokeColor) {
+        android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+        gd.setColor(color);
+        gd.setCornerRadius(dp(radiusDp));
+        gd.setStroke(dp(1), strokeColor);
+        return gd;
+    }
+
+    private android.graphics.drawable.GradientDrawable copyDrawable(android.graphics.drawable.GradientDrawable src) {
+        android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+        gd.setColor(src.getColor() != null ? src.getColor().getDefaultColor() : 0x00000000);
+        gd.setCornerRadius(src.getCornerRadius());
+        return gd;
+    }
+
     private void updateCartButton() {
         if (btnFloatingCart != null) {
             int count = regularCart.size() + advanceCart.size();
@@ -1173,62 +1288,280 @@ private void showUpdateDueDialog(Order o) {
     }
 
     private void showCartDialog() {
-        if (regularCart.isEmpty()) {
-            Toast.makeText(this, "कार्ट खाली है!", Toast.LENGTH_SHORT).show();
+        if (regularCart.isEmpty() && advanceCart.isEmpty()) {
+            Toast.makeText(this, isHindi ? "कार्ट खाली है!" : "Cart is empty!", Toast.LENGTH_SHORT).show();
             return;
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("🛒 ऑर्डर पूरा करें");
+        builder.setTitle(isHindi ? "🛒 ऑर्डर पूरा करें" : "🛒 Complete Order");
 
+        ScrollView scrollView = new ScrollView(this);
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(16, 16, 16, 16);
+        layout.setPadding(20, 16, 20, 16);
+        scrollView.addView(layout);
+
+        // ── Cart items (editable) ──
+        // We use a map to hold current qty values (editable by user)
+        java.util.LinkedHashMap<String, double[]> editableQty = new java.util.LinkedHashMap<>();
+        for (String id : regularCart.keySet()) editableQty.put(id, new double[]{regularCart.get(id)});
+
+        // Total TextView (updated live)
+        TextView tvTotal = new TextView(this);
+        tvTotal.setTextSize(16);
+        tvTotal.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvTotal.setTextColor(Color.parseColor("#6200EE"));
+        tvTotal.setPadding(0, 0, 0, 12);
+
+        Runnable[] calcTotal = {null};
+        calcTotal[0] = () -> {
+            double tot = 0;
+            for (String id : editableQty.keySet()) {
+                Product pr = null;
+                for (Product x : products) if (x.id.equals(id)) { pr = x; break; }
+                if (pr != null) tot += pr.price * editableQty.get(id)[0];
+            }
+            tvTotal.setText(isHindi ? "कुल: ₹" + (int) tot : "Total: ₹" + (int) tot);
+        };
+
+        // Section label
+        TextView tvItemsLabel = new TextView(this);
+        tvItemsLabel.setText(isHindi ? "📋 आइटम्स (मात्रा बदलें या हटाएं):" : "📋 Items (edit qty or remove):");
+        tvItemsLabel.setTextSize(13);
+        tvItemsLabel.setTextColor(Color.parseColor("#888888"));
+        tvItemsLabel.setPadding(0, 0, 0, 8);
+        layout.addView(tvItemsLabel);
+
+        // Item rows container
+        LinearLayout itemsContainer = new LinearLayout(this);
+        itemsContainer.setOrientation(LinearLayout.VERTICAL);
+        layout.addView(itemsContainer);
+
+        // Build item rows
+        Runnable[] buildRows = {null};
+        buildRows[0] = () -> {
+            itemsContainer.removeAllViews();
+            for (String id : new java.util.ArrayList<>(editableQty.keySet())) {
+                Product pr = null;
+                for (Product x : products) if (x.id.equals(id)) { pr = x; break; }
+                if (pr == null) continue;
+                final Product fp = pr;
+                final String fid = id;
+
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.VERTICAL);
+                LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, -2);
+                rowLp.setMargins(0, 0, 0, 10);
+                row.setLayoutParams(rowLp);
+                row.setBackgroundColor(Color.parseColor("#F8F8F8"));
+                row.setPadding(12, 10, 12, 10);
+
+                // Name row
+                LinearLayout nameRow = new LinearLayout(this);
+                nameRow.setOrientation(LinearLayout.HORIZONTAL);
+                nameRow.setGravity(Gravity.CENTER_VERTICAL);
+                nameRow.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+
+                TextView tvName = new TextView(this);
+                tvName.setText(isHindi ? fp.name : fp.nameEn);
+                tvName.setTextSize(14);
+                tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+                tvName.setTextColor(Color.BLACK);
+                tvName.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+                nameRow.addView(tvName);
+
+                // Rate label
+                TextView tvRate = new TextView(this);
+                tvRate.setText("₹" + (int) fp.price + "/u");
+                tvRate.setTextSize(12);
+                tvRate.setTextColor(Color.parseColor("#6200EE"));
+                LinearLayout.LayoutParams rateLp2 = new LinearLayout.LayoutParams(-2, -2);
+                rateLp2.setMargins(8, 0, 8, 0);
+                tvRate.setLayoutParams(rateLp2);
+                nameRow.addView(tvRate);
+
+                // Remove button
+                Button btnRemove = new Button(this);
+                btnRemove.setText("❌");
+                btnRemove.setTextSize(11);
+                btnRemove.setPadding(8, 4, 8, 4);
+                btnRemove.setTextColor(Color.WHITE);
+                btnRemove.setBackgroundColor(Color.parseColor("#D32F2F"));
+                btnRemove.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+                btnRemove.setOnClickListener(v -> {
+                    editableQty.remove(fid);
+                    buildRows[0].run();
+                    calcTotal[0].run();
+                });
+                nameRow.addView(btnRemove);
+                row.addView(nameRow);
+
+                // Qty + Price input row
+                LinearLayout qpRow = new LinearLayout(this);
+                qpRow.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams qpLp = new LinearLayout.LayoutParams(-1, -2);
+                qpLp.topMargin = 6;
+                qpRow.setLayoutParams(qpLp);
+
+                final EditText etQty = new EditText(this);
+                etQty.setHint(isHindi ? "मात्रा" : "Qty");
+                etQty.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                etQty.setText(String.format("%.3f", editableQty.get(fid)[0]).replaceAll("\.?0+$", ""));
+                LinearLayout.LayoutParams qLp2 = new LinearLayout.LayoutParams(0, -2, 1f);
+                qLp2.setMargins(0, 0, 6, 0);
+                etQty.setLayoutParams(qLp2);
+                etQty.setPadding(10, 8, 10, 8);
+                etQty.setBackgroundColor(Color.WHITE);
+
+                final EditText etPrice = new EditText(this);
+                etPrice.setHint(isHindi ? "कीमत ₹" : "Price ₹");
+                etPrice.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                etPrice.setText(String.valueOf((int)(editableQty.get(fid)[0] * fp.price)));
+                etPrice.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+                etPrice.setPadding(10, 8, 10, 8);
+                etPrice.setBackgroundColor(Color.WHITE);
+
+                final boolean[] qc = {false}, pc = {false};
+
+                etQty.addTextChangedListener(new android.text.TextWatcher() {
+                    public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+                    public void onTextChanged(CharSequence s, int a, int b, int c) {}
+                    public void afterTextChanged(android.text.Editable s) {
+                        if (pc[0]) return;
+                        qc[0] = true;
+                        String v = s.toString().trim();
+                        if (!v.isEmpty()) {
+                            try {
+                                double q = Double.parseDouble(v);
+                                editableQty.get(fid)[0] = q;
+                                etPrice.setText(String.valueOf((int)(q * fp.price)));
+                                calcTotal[0].run();
+                            } catch (NumberFormatException ignored) {}
+                        } else {
+                            editableQty.get(fid)[0] = 0;
+                            etPrice.setText("");
+                            calcTotal[0].run();
+                        }
+                        qc[0] = false;
+                    }
+                });
+
+                etPrice.addTextChangedListener(new android.text.TextWatcher() {
+                    public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+                    public void onTextChanged(CharSequence s, int a, int b, int c) {}
+                    public void afterTextChanged(android.text.Editable s) {
+                        if (qc[0]) return;
+                        pc[0] = true;
+                        String v = s.toString().trim();
+                        if (!v.isEmpty() && fp.price > 0) {
+                            try {
+                                double amt = Double.parseDouble(v);
+                                double q = amt / fp.price;
+                                editableQty.get(fid)[0] = q;
+                                etQty.setText(String.format("%.3f", q).replaceAll("\.?0+$", ""));
+                                calcTotal[0].run();
+                            } catch (NumberFormatException ignored) {}
+                        } else {
+                            editableQty.get(fid)[0] = 0;
+                            etQty.setText("");
+                            calcTotal[0].run();
+                        }
+                        pc[0] = false;
+                    }
+                });
+
+                qpRow.addView(etQty);
+                qpRow.addView(etPrice);
+                row.addView(qpRow);
+                itemsContainer.addView(row);
+            }
+        };
+
+        buildRows[0].run();
+        calcTotal[0].run();
+
+        layout.addView(tvTotal);
+
+        // Divider
+        View divider = new View(this);
+        divider.setBackgroundColor(Color.parseColor("#E0E0E0"));
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(-1, 1);
+        divLp.setMargins(0, 8, 0, 16);
+        divider.setLayoutParams(divLp);
+        layout.addView(divider);
+
+        // Customer name
+        TextView tvNameLabel = new TextView(this);
+        tvNameLabel.setText(isHindi ? "👤 ग्राहक का नाम:" : "👤 Customer Name:");
+        tvNameLabel.setTextSize(13);
+        tvNameLabel.setTextColor(Color.parseColor("#555555"));
+        layout.addView(tvNameLabel);
 
         EditText customerName = new EditText(this);
-        customerName.setHint("ग्राहक का नाम");
+        customerName.setHint(isHindi ? "नाम दर्ज करें" : "Enter name");
+        customerName.setPadding(10, 8, 10, 8);
+        customerName.setBackgroundColor(Color.parseColor("#F5F5F5"));
+        LinearLayout.LayoutParams nameLp = new LinearLayout.LayoutParams(-1, -2);
+        nameLp.setMargins(0, 4, 0, 12);
+        customerName.setLayoutParams(nameLp);
         layout.addView(customerName);
 
+        // Amount received
+        TextView tvAmtLabel = new TextView(this);
+        tvAmtLabel.setText(isHindi ? "💵 राशि प्राप्त (₹):" : "💵 Amount Received (₹):");
+        tvAmtLabel.setTextSize(13);
+        tvAmtLabel.setTextColor(Color.parseColor("#555555"));
+        layout.addView(tvAmtLabel);
+
         EditText amountReceived = new EditText(this);
-        amountReceived.setHint("राशि प्राप्त");
-        amountReceived.setInputType(InputType.TYPE_CLASS_NUMBER);
+        amountReceived.setHint(isHindi ? "राशि दर्ज करें" : "Enter amount");
+        amountReceived.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        amountReceived.setPadding(10, 8, 10, 8);
+        amountReceived.setBackgroundColor(Color.parseColor("#F5F5F5"));
+        LinearLayout.LayoutParams amtLp = new LinearLayout.LayoutParams(-1, -2);
+        amtLp.setMargins(0, 4, 0, 4);
+        amountReceived.setLayoutParams(amtLp);
         layout.addView(amountReceived);
 
-        builder.setView(layout);
-        builder.setPositiveButton("Complete", (dialog, which) -> {
+        builder.setView(scrollView);
+        builder.setPositiveButton(isHindi ? "✅ ऑर्डर कन्फर्म करें" : "✅ Confirm Order", (dialog, which) -> {
             String name = customerName.getText().toString().trim();
             if (name.isEmpty()) {
-                Toast.makeText(MainActivity.this, "नाम दर्ज करें!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, isHindi ? "नाम दर्ज करें!" : "Enter name!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (editableQty.isEmpty()) {
+                Toast.makeText(MainActivity.this, isHindi ? "कार्ट खाली है!" : "Cart is empty!", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             double total = 0;
             ArrayList<OrderItem> items = new ArrayList<>();
-            for (String productId : regularCart.keySet()) {
-                Product p = products.stream().filter(prod -> prod.id.equals(productId)).findFirst().orElse(null);
-                if (p != null) {
-                    double qty = regularCart.get(productId);
-                    double price = p.price * qty;
+            for (String productId : editableQty.keySet()) {
+                double q = editableQty.get(productId)[0];
+                if (q <= 0) continue;
+                Product pr = null;
+                for (Product x : products) if (x.id.equals(productId)) { pr = x; break; }
+                if (pr != null) {
+                    double price = pr.price * q;
                     total += price;
-                    items.add(new OrderItem(productId, p.name, p.nameEn, qty, price, false));
+                    items.add(new OrderItem(productId, pr.name, pr.nameEn, q, price, false));
                 }
             }
 
             double received = 0;
-            try {
-                received = Double.parseDouble(amountReceived.getText().toString());
-            } catch (NumberFormatException e) {
-                received = total;
-            }
+            try { received = Double.parseDouble(amountReceived.getText().toString()); }
+            catch (NumberFormatException e) { received = total; }
 
             double due = total - received;
             orders.add(new Order("ORD" + System.currentTimeMillis(), name, items, total, received, due));
             regularCart.clear();
             advanceCart.clear();
             updateCartButton();
-            Toast.makeText(MainActivity.this, "ऑर्डर पूरा हो गया!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, isHindi ? "✅ ऑर्डर पूरा हो गया!" : "✅ Order confirmed!", Toast.LENGTH_SHORT).show();
         });
-        builder.setNegativeButton("Cancel", null);
+        builder.setNegativeButton(isHindi ? "रद्द करें" : "Cancel", null);
         builder.show();
     }
 
