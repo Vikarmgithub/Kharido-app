@@ -72,15 +72,16 @@ private String tempSelectedImageUri = "";
         String dateKey, monthKey;
         long timestamp;
         ArrayList<OrderItem> items;
-        double total, received, due;
-
-        Order(String id, String customerName, ArrayList<OrderItem> items, double total, double received, double due) {
+        double total, received, due, discount; // discount ADD KAR
+        // LINE 77
+        Order(String id, String customerName, ArrayList<OrderItem> items, double total, double received, double due, double discount) {
             this.id = id;
             this.customerName = customerName;
             this.items = items;
             this.total = total;
             this.received = received;
             this.due = due;
+            this.discount = discount; // YE ADD KAR LINE 83 KE BAAD
             this.status = "Pending";
             Date currentDate = new Date();
             this.timestamp = currentDate.getTime();
@@ -997,7 +998,12 @@ private void showOrderDetailDialog(Order o) {
     addDivider(layout);
     addDetailRow(layout, "💰 कुल", "₹" + (int) o.total);
     addDetailRow(layout, "✅ मिला", "₹" + (int) o.received);
-    addDetailRow(layout, "⚠️ बकाया", "₹" + (int) o.due);
+    // LINE 955 SE PEHLE YE ADD KAR
+if (o.discount > 0) {
+    addDetailRow(layout, "🏷️ छूट", "₹" + (int) o.discount);
+}
+// LINE 955 (YE ALREADY HAI)
+addDetailRow(layout, "⚠️ बकाया", "₹" + (int) o.due);
 
     ScrollView sv = new ScrollView(this);
     sv.addView(layout);
@@ -1526,6 +1532,19 @@ private void showUpdateDueDialog(Order o) {
                 qpRow.addView(etPrice);
                 row.addView(qpRow);
                 itemsContainer.addView(row);
+                // LINE 1529 KE BAAD YE PURA BLOCK ADD KAR
+TextView tvDiscLabel = new TextView(this);
+tvDiscLabel.setText(isHindi ? "🏷️ छूट (₹):" : "🏷️ Discount (₹):");
+tvDiscLabel.setTextSize(13);
+tvDiscLabel.setTextColor(Color.parseColor("#555555"));
+layout.addView(tvDiscLabel);
+
+EditText discountAmount = new EditText(this);
+discountAmount.setHint(isHindi ? "छूट दर्ज करें" : "Enter discount");
+discountAmount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+discountAmount.setPadding(10, 8, 10, 8);
+discountAmount.setBackgroundColor(Color.parseColor("#F5F5F5"));
+layout.addView(discountAmount);
             }
         };
 
@@ -1587,7 +1606,12 @@ private void showUpdateDueDialog(Order o) {
                 return;
             }
 
-            double total = 0;
+            
+double discount = 0;
+try { discount = Double.parseDouble(discountAmount.getText().toString()); }
+catch (NumberFormatException e) { discount = 0; }
+double due = total - received - discount;
+if (due < 0) due = 0;
             ArrayList<OrderItem> items = new ArrayList<>();
             for (String productId : editableQty.keySet()) {
                 double q = editableQty.get(productId)[0];
