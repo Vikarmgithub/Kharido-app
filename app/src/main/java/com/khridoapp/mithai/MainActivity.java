@@ -797,12 +797,99 @@ public class MainActivity extends Activity {
     }
 
     private void showActivationSystemDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("🔐 App Activation Required");
-        builder.setMessage("यह app license protected है। Activate करने के लिए contact करें।");
-        builder.setPositiveButton("OK", null);
-        builder.show();
+    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    builder.setTitle("🔐 App Activation");
+    builder.setCancelable(false); // Back press se band na ho
+
+    LinearLayout layout = new LinearLayout(this);
+    layout.setOrientation(LinearLayout.VERTICAL);
+    layout.setPadding(40, 20, 40, 20);
+
+    // Device ID dikhao
+    TextView tvDeviceId = new TextView(this);
+    tvDeviceId.setText("📱 आपकी Device ID:\n" + deviceId);
+    tvDeviceId.setTextSize(13);
+    tvDeviceId.setTextColor(Color.parseColor("#6200EE"));
+    tvDeviceId.setPadding(0, 0, 0, 16);
+    layout.addView(tvDeviceId);
+
+    // Copy Device ID button
+    Button btnCopyId = new Button(this);
+    btnCopyId.setText("📋 Device ID Copy करें");
+    btnCopyId.setTextColor(Color.WHITE);
+    btnCopyId.setBackgroundColor(Color.parseColor("#6200EE"));
+    btnCopyId.setOnClickListener(v -> {
+        android.content.ClipboardManager clipboard =
+            (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        android.content.ClipData clip =
+            android.content.ClipData.newPlainText("DeviceID", deviceId);
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(this, "Device ID Copy हो गई! ✅", Toast.LENGTH_SHORT).show();
+        }
+    });
+    layout.addView(btnCopyId);
+
+    // License Key input
+    TextView tvLabel = new TextView(this);
+    tvLabel.setText("\n🔑 License Key यहाँ डालें:");
+    tvLabel.setTextSize(14);
+    tvLabel.setTextColor(Color.BLACK);
+    layout.addView(tvLabel);
+
+    EditText etKey = new EditText(this);
+    etKey.setHint("MITHAI-XXXXXX-XX-893");
+    etKey.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
+                       android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+    layout.addView(etKey);
+
+    builder.setView(layout);
+
+    builder.setPositiveButton("✅ Activate", (dialog, which) -> {
+        String enteredKey = etKey.getText().toString().trim();
+        if (validateLicenseKey(enteredKey, deviceId)) {
+            // Key sahi hai — activate karo
+            activationPrefs.edit()
+                .putBoolean(KEY_IS_ACTIVATED, true)
+                .apply();
+            isAppActivated = true;
+            Toast.makeText(this, "🎉 App Activate हो गई!", Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "❌ गलत License Key!", Toast.LENGTH_SHORT).show();
+            // Dialog fir se dikhao
+            showActivationSystemDialog();
+        }
+    });
+
+    builder.setNegativeButton("Demo Mode", (dialog, which) -> {
+        Toast.makeText(this, "⚠️ Demo Mode — सीमित सुविधाएं", Toast.LENGTH_SHORT).show();
+    });
+
+    builder.show();
+}
+
+// Key validation — KeyGeneratorActivity ke algorithm ka reverse
+private boolean validateLicenseKey(String enteredKey, String dId) {
+    try {
+        // Expected key banao device ID se
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < dId.length(); i++) {
+            sb.append((char) (dId.charAt(i) + 3));
+        }
+        String shiftedStr = sb.toString().toUpperCase();
+
+        if (shiftedStr.length() > 2) {
+            char first = shiftedStr.charAt(0);
+            char last = shiftedStr.charAt(shiftedStr.length() - 1);
+            shiftedStr = last + shiftedStr.substring(1, shiftedStr.length() - 1) + first;
+        }
+
+        String expectedKey = "MITHAI-" + shiftedStr + "-" + (dId.length() * 7) + "-893";
+        return enteredKey.equalsIgnoreCase(expectedKey);
+    } catch (Exception e) {
+        return false;
     }
+}
 
     private void verifyAdminAndOpenGenerator() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
