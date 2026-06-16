@@ -19,17 +19,16 @@ import com.google.firebase.auth.FirebaseUser;
 
 public class KeyGeneratorActivity extends Activity {
 
-    // ⚠️ यहाँ अपनी वह Gmail ID डालें जिसे आप एडमिन बनाना चाहते हैं
-    private static final String ADMIN_EMAIL = "vikarmsrkian6514@gmail.com"; 
+    // ⚠️ यहाँ अपनी असली Gmail ID दोबारा चेक कर लें भाई
+    private static final String ADMIN_EMAIL = "your_google_email@gmail.com"; 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 🔒 सुरक्षा: चेक करें कि क्या यूजर फायरबेस पर लॉग इन है?
+        // 🔒 सुरक्षा लॉक
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         
-        // यह चेक करेगा कि यूजर लॉग इन है और क्या वही ईमेल है जो एडमिन की है
         if (user == null || !user.getEmail().equalsIgnoreCase(ADMIN_EMAIL)) {
             Toast.makeText(this, "🔴 अनधिकृत पहुंच! आप एडमिन नहीं हैं।", Toast.LENGTH_LONG).show();
             finish(); 
@@ -41,9 +40,10 @@ public class KeyGeneratorActivity extends Activity {
         layout.setPadding(50, 60, 50, 50);
         layout.setBackgroundColor(0xFFF4F6F9);
 
+        // 🔥 यहाँ सुंदर सा "क्लाउड एडमिन पैनल" टाइटिल सेट कर दिया है
         TextView tvTitle = new TextView(this);
-        tvTitle.setText("👑 क्लाउड एडमिन पैनल\nलाइसेंस की जनरेटर");
-        tvTitle.setTextSize(20);
+        tvTitle.setText("👑 श्री मिष्ठान भंडार\n☁️ क्लाउड एडमिन पैनल");
+        tvTitle.setTextSize(22);
         tvTitle.setTypeface(null, Typeface.BOLD);
         tvTitle.setTextColor(0xFF6200EE);
         tvTitle.setGravity(Gravity.CENTER);
@@ -51,15 +51,17 @@ public class KeyGeneratorActivity extends Activity {
         layout.addView(tvTitle);
 
         TextView tvAdminInfo = new TextView(this);
-        tvAdminInfo.setText("🟢 एडमिन: " + user.getEmail());
-        tvAdminInfo.setTextSize(12);
-        tvAdminInfo.setTextColor(Color.GRAY);
+        tvAdminInfo.setText("🟢 वेरीफाइड एडमिन: " + user.getEmail());
+        tvAdminInfo.setTextSize(13);
+        tvAdminInfo.setTextColor(Color.parseColor("#4CAF50"));
         tvAdminInfo.setGravity(Gravity.CENTER);
-        tvAdminInfo.setPadding(0, 0, 0, 20);
+        tvAdminInfo.setPadding(0, 0, 0, 30);
         layout.addView(tvAdminInfo);
 
         TextView tvLabel = new TextView(this);
-        tvLabel.setText("📱 ग्राहक की Device ID:");
+        tvLabel.setText("📱 ग्राहक की Device ID यहाँ पेस्ट करें:");
+        tvLabel.setTextSize(14);
+        tvLabel.setTextColor(Color.BLACK);
         layout.addView(tvLabel);
 
         final EditText etDeviceIdInput = new EditText(this);
@@ -67,22 +69,23 @@ public class KeyGeneratorActivity extends Activity {
         layout.addView(etDeviceIdInput);
 
         final TextView tvResultKey = new TextView(this);
-        tvResultKey.setTextSize(15);
+        tvResultKey.setTextSize(16);
         tvResultKey.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         tvResultKey.setTextColor(Color.parseColor("#00C853"));
         tvResultKey.setGravity(Gravity.CENTER);
         tvResultKey.setPadding(0, 30, 0, 30);
         
         Button btnGenerate = new Button(this);
-        btnGenerate.setText("⚡ लाइसेंस की जनरेट करें");
+        btnGenerate.setText("⚡ लाइसेंस की (Key) बनाएं");
         btnGenerate.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF6200EE));
         btnGenerate.setTextColor(Color.WHITE);
         layout.addView(btnGenerate);
         layout.addView(tvResultKey);
 
         final Button btnCopyKey = new Button(this);
-        btnCopyKey.setText("📋 की (Key) कॉपी करें");
+        btnCopyKey.setText("📋 बनी हुई Key कॉपी करें");
         btnCopyKey.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF03DAC5));
+        btnCopyKey.setTextColor(Color.BLACK);
         btnCopyKey.setVisibility(View.GONE);
         layout.addView(btnCopyKey);
 
@@ -91,11 +94,10 @@ public class KeyGeneratorActivity extends Activity {
         btnGenerate.setOnClickListener(v -> {
             String dId = etDeviceIdInput.getText().toString().trim();
             if (dId.isEmpty()) {
-                Toast.makeText(this, "Device ID तो डालो भाई!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "पहले Device ID तो डालो भाई!", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // 🔐 क्रिप्टोग्राफिक शिफ्टिंग फार्मूला (जो आपके ऐप में है)
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < dId.length(); i++) {
                 sb.append((char) (dId.charAt(i) + 3));
@@ -105,11 +107,11 @@ public class KeyGeneratorActivity extends Activity {
             if (shiftedStr.length() > 2) {
                 char first = shiftedStr.charAt(0);
                 char last = shiftedStr.charAt(shiftedStr.length() - 1);
-                shiftedStr = last + shiftedStr.substring(1, shiftedStr.length() - 2) + first;
+                shiftedStr = last + shiftedStr.substring(1, shiftedStr.length() - 1) + first;
             }
 
             final String finalGeneratedKey = "MITHAI-" + shiftedStr + "-" + (dId.length() * 7) + "-893";
-            tvResultKey.setText("🔑 जनरेटेड लाइसेंस की:\n\n" + finalGeneratedKey);
+            tvResultKey.setText("🔑 ग्राहक की लाइसेंस की:\n\n" + finalGeneratedKey);
             btnCopyKey.setVisibility(View.VISIBLE);
 
             btnCopyKey.setOnClickListener(v1 -> {
@@ -117,7 +119,7 @@ public class KeyGeneratorActivity extends Activity {
                 ClipData clip = ClipData.newPlainText("MithaiKey", finalGeneratedKey);
                 if (clipboard != null) {
                     clipboard.setPrimaryClip(clip);
-                    Toast.makeText(KeyGeneratorActivity.this, "की कॉपी हो गई! ✅", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(KeyGeneratorActivity.this, "लाइसेंस की कॉपी हो गई! ✅", Toast.LENGTH_SHORT).show();
                 }
             });
         });
