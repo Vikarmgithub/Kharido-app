@@ -483,14 +483,17 @@ private String tempSelectedImageUri = "";
             LinearLayout.LayoutParams addLp = new LinearLayout.LayoutParams(0, dp(44), 1f);
             addLp.setMargins(0, 0, dp(8), 0);
             addBtn.setLayoutParams(addLp);
-            addBtn.setInsetTop(0); addBtn.setInsetBottom(0);
+            // PURANI 2 lines hata, YE 2 dal
+            addBtn.setPadding(0, 0, 0, 0);
+            addBtn.setBackground(addBtn.getBackground());
 
             Button advBtn = new Button(this);
             advBtn.setText(isHindi ? "📦 एडवांस" : "📦 Advance");
             advBtn.setTextSize(12);
             advBtn.setTextColor(Color.parseColor("#1E293B"));
             advBtn.setBackground(roundedBg(Color.parseColor("#F59E0B"), 10));
-            advBtn.setTypeface(null, android.graphics.Typeface.BOLD);
+            advBtn.setPadding(0, 0, 0, 0);
+            advBtn.setBackground(advBtn.getBackground());
             advBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(44), 1f));
             advBtn.setInsetTop(0); advBtn.setInsetBottom(0);
 
