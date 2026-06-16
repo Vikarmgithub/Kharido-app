@@ -54,7 +54,7 @@ public class MainActivity extends Activity {
 
     static class Order {
         String id, customerName, time, status; 
-        String dateKey, monthKey; // फ़िल्टर करने के लिए स्पेशल डेट चाबियां
+        String dateKey, monthKey; 
         ArrayList<OrderItem> items;
         double total, received, due;
         Order(String id, String customerName, ArrayList<OrderItem> items, double total, double received, double due) {
@@ -66,7 +66,6 @@ public class MainActivity extends Activity {
             SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy, hh:mm a", Locale.getDefault());
             this.time = sdf.format(currentDate); 
             
-            // फ़िल्टर के लिए फॉर्मेट लॉक करना
             this.dateKey = new SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault()).format(currentDate);
             this.monthKey = new SimpleDateFormat("MMM-yyyy", Locale.getDefault()).format(currentDate);
         }
@@ -83,7 +82,6 @@ public class MainActivity extends Activity {
     private Button btnShopView, btnDashView, btnFloatingCart;
     private Button tabInventory, tabOrders, tabAnalytics;
     
-    // लाइव फ़िल्टर कंपोनेंट्स
     private EditText etSearchName;
     private Spinner spDateFilter;
     private String currentSubTab = "Inventory";
@@ -110,7 +108,6 @@ public class MainActivity extends Activity {
         etSearchName = findViewById(R.id.etSearchName);
         spDateFilter = findViewById(R.id.spDateFilter);
 
-        // ड्रॉपडाउन फ़िल्टर सेटअप
         ArrayAdapter<String> filterAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new String[]{"All Orders", "Today", "This Month"});
         filterAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spDateFilter.setAdapter(filterAdapter);
@@ -119,7 +116,6 @@ public class MainActivity extends Activity {
         renderShop();
         updateCartButton();
 
-        // टैब बटन ट्रिगर्स
         btnShopView.setOnClickListener(v -> {
             shopContainer.setVisibility(View.VISIBLE);
             dashboardContainer.setVisibility(View.GONE);
@@ -146,7 +142,6 @@ public class MainActivity extends Activity {
         tabOrders.setOnClickListener(v -> { switchSubTab(tabOrders); renderOrdersTab(); });
         tabAnalytics.setOnClickListener(v -> { switchSubTab(tabAnalytics); renderAnalyticsTab(); });
         
-        // 🔍 सर्च और फ़िल्टर के लिए लाइव लिस्नर्स
         etSearchName.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -163,6 +158,12 @@ public class MainActivity extends Activity {
         btnFloatingCart.setOnClickListener(v -> showCartDialog());
     }
 
+    // 🔥 गायब हुआ मेथड वापस जोड़ दिया गया है ताकि कंपाइलर एरर न दे
+    private void updateCartButton() {
+        int totalItems = regularCart.size() + advanceCart.size();
+        btnFloatingCart.setText("🛒 कार्ट (" + totalItems + ")");
+    }
+
     private void switchSubTab(Button activeTab) {
         tabInventory.setBackgroundColor(0xFFE0E0E0);
         tabOrders.setBackgroundColor(0xFFE0E0E0);
@@ -171,13 +172,13 @@ public class MainActivity extends Activity {
         
         if (activeTab == tabInventory) {
             currentSubTab = "Inventory";
-            filterBarContainer.setVisibility(View.GONE); // स्टॉक में सर्च की जरूरत नहीं
+            filterBarContainer.setVisibility(View.GONE);
         } else if (activeTab == tabOrders) {
             currentSubTab = "Orders";
             filterBarContainer.setVisibility(View.VISIBLE);
         } else {
             currentSubTab = "Analytics";
-            filterBarContainer.setVisibility(View.VISIBLE); // कमाई में भी तारीख फ़िल्टर काम करेगा
+            filterBarContainer.setVisibility(View.VISIBLE);
         }
     }
 
@@ -189,15 +190,12 @@ public class MainActivity extends Activity {
         }
     }
 
-    // 🎯 सर्च और डेट फ़िल्टर का कंबाइंड लॉजिक (Core Filter Function)
     private boolean shouldShowOrder(Order o) {
         String searchTxt = etSearchName.getText().toString().trim().toLowerCase();
-        // 1. नाम मैचिंग चेक करें
         if (!searchTxt.isEmpty() && !o.customerName.toLowerCase().contains(searchTxt)) {
             return false; 
         }
 
-        // 2. तारीख/महीना मैचिंग चेक करें
         String selectedFilter = spDateFilter.getSelectedItem().toString();
         String todayKey = new SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault()).format(new Date());
         String thisMonthKey = new SimpleDateFormat("MMM-yyyy", Locale.getDefault()).format(new Date());
@@ -209,7 +207,7 @@ public class MainActivity extends Activity {
             return false;
         }
 
-        return true; // अगर दोनों पास हो गए तो ऑर्डर दिखाओ
+        return true;
     }
 
     private void initSeedProducts() {
@@ -526,7 +524,7 @@ public class MainActivity extends Activity {
 
     private void showCartDialog() {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("फाइनल बिल कैलकुलेटर");
+        builder.setTitle("FINAL BILL CALCULATOR");
         final LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(32, 24, 32, 24);
@@ -627,13 +625,11 @@ public class MainActivity extends Activity {
         b.show();
     }
 
-    // --- 🧾 ऑर्डर्स रिपोर्ट टैब (लाइव नाम सर्च और तारीख फ़िल्टर के साथ) ---
     private void renderOrdersTab() {
         dashDynamicContent.removeAllViews();
         int visibleCount = 0;
 
         for (final Order o : orders) {
-            // 🔥 यहाँ फ़िल्टर रूल चेक हो रहा है
             if (!shouldShowOrder(o)) continue; 
             visibleCount++;
 
@@ -673,14 +669,12 @@ public class MainActivity extends Activity {
         }
     }
 
-    // --- 📊 कमाई टैब (यह भी सर्च बार और तारीख फ़िल्टर के हिसाब से लाइव कैलकुलेट होगा) ---
     private void renderAnalyticsTab() {
         dashDynamicContent.removeAllViews();
         double totalSales = 0, totalReceived = 0;
         int filteredCount = 0;
 
         for (Order o : orders) { 
-            // 🔥 सिर्फ़ फ़िल्टर पास करने वाले ऑर्डर्स का ही गल्ला जोड़ें
             if (!shouldShowOrder(o)) continue; 
             
             if (!o.status.equals("Rejected")) { 
