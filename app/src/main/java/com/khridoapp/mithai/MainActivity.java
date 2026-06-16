@@ -35,6 +35,10 @@ import java.util.HashMap;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
+    // Existing variables ke neeche ye add karo
+private static final int PICK_IMAGE_PRODUCT = 201;
+private ImageView tempDialogImageView = null;
+private String tempSelectedImageUri = "";
 
     // ==================== DATA CLASSES ====================
     static class Product {
@@ -436,81 +440,506 @@ public class MainActivity extends Activity {
     }
 
     private void renderInventoryTab() {
-        if (dashDynamicContent == null) return;
-        dashDynamicContent.removeAllViews();
+    private void renderInventoryTab() {
+    if (dashDynamicContent == null) return;
+    dashDynamicContent.removeAllViews();
 
-        // Add Product Button
-        Button addProductBtn = new Button(this);
-        addProductBtn.setText("➕ नई मिठाई जोड़ें");
-        addProductBtn.setOnClickListener(v -> showAddProductDialog());
-        dashDynamicContent.addView(addProductBtn);
+    Button addBtn = new Button(this);
+    addBtn.setText("➕ नई मिठाई जोड़ें");
+    addBtn.setTextColor(Color.WHITE);
+    addBtn.setBackgroundColor(Color.parseColor("#6200EE"));
+    LinearLayout.LayoutParams addP = new LinearLayout.LayoutParams(-1, -2);
+    addP.setMargins(0, 0, 0, 16);
+    addBtn.setLayoutParams(addP);
+    addBtn.setOnClickListener(v -> showAddEditProductDialog(null));
+    dashDynamicContent.addView(addBtn);
 
-        // List Products
-        for (Product p : products) {
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.VERTICAL);
-            row.setBackgroundColor(Color.WHITE);
-            row.setPadding(12, 12, 12, 12);
-            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
-            rowParams.setMargins(0, 4, 0, 4);
-            row.setLayoutParams(rowParams);
-            row.setElevation(1f);
+    for (Product p : products) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setBackgroundColor(Color.WHITE);
+        row.setPadding(16, 16, 16, 16);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setElevation(3f);
+        LinearLayout.LayoutParams rowP = new LinearLayout.LayoutParams(-1, -2);
+        rowP.setMargins(0, 0, 0, 10);
+        row.setLayoutParams(rowP);
 
-            TextView itemText = new TextView(this);
-            itemText.setText(p.name + " - ₹" + p.price);
-            itemText.setTextSize(14);
-            itemText.setTypeface(null, Typeface.BOLD);
-            row.addView(itemText);
+        // Mini Photo
+        ImageView img = new ImageView(this);
+        LinearLayout.LayoutParams imgP = new LinearLayout.LayoutParams(90, 90);
+        imgP.setMargins(0, 0, 16, 0);
+        img.setLayoutParams(imgP);
+        img.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        img.setBackgroundColor(Color.parseColor("#E8E0F0"));
+        if (p.imageUriStr != null && !p.imageUriStr.isEmpty())
+            img.setImageURI(Uri.parse(p.imageUriStr));
+        else
+            img.setImageResource(android.R.drawable.ic_menu_gallery);
+        row.addView(img);
 
-            dashDynamicContent.addView(row);
+        // Name + Rate
+        LinearLayout info = new LinearLayout(this);
+        info.setOrientation(LinearLayout.VERTICAL);
+        info.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+
+        TextView tvName = new TextView(this);
+        tvName.setText(isHindi ? p.name : p.nameEn);
+        tvName.setTextSize(15);
+        tvName.setTypeface(null, Typeface.BOLD);
+        tvName.setTextColor(Color.BLACK);
+        info.addView(tvName);
+
+        TextView tvRate = new TextView(this);
+        tvRate.setText("₹" + (int) p.price + " / kg");
+        tvRate.setTextSize(13);
+        tvRate.setTextColor(Color.parseColor("#6200EE"));
+        info.addView(tvRate);
+        row.addView(info);
+
+        // Edit Button
+        Button editBtn = new Button(this);
+        editBtn.setText("✏️ Edit");
+        editBtn.setTextSize(12);
+        editBtn.setTextColor(Color.WHITE);
+        editBtn.setBackgroundColor(Color.parseColor("#03DAC5"));
+        final Product fp = p;
+        editBtn.setOnClickListener(v -> showAddEditProductDialog(fp));
+        row.addView(editBtn);
+
+        dashDynamicContent.addView(row);
+    }
+}
+
+private void showAddEditProductDialog(Product product) {
+    boolean isEditing = (product != null);
+    tempSelectedImageUri = isEditing ? product.imageUriStr : "";
+
+    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    builder.setTitle(isEditing ? "✏️ मिठाई Edit करें" : "➕ नई मिठाई जोड़ें");
+
+    ScrollView sv = new ScrollView(this);
+    LinearLayout layout = new LinearLayout(this);
+    layout.setOrientation(LinearLayout.VERTICAL);
+    layout.setPadding(40, 20, 40, 20);
+    sv.addView(layout);
+
+    // Photo preview
+    tempDialogImageView = new ImageView(this);
+    LinearLayout.LayoutParams photoP = new LinearLayout.LayoutParams(-1, 220);
+    photoP.setMargins(0, 0, 0, 10);
+    tempDialogImageView.setLayoutParams(photoP);
+    tempDialogImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+    tempDialogImageView.setBackgroundColor(Color.parseColor("#E8E0F0"));
+    if (isEditing && product.imageUriStr != null && !product.imageUriStr.isEmpty())
+        tempDialogImageView.setImageURI(Uri.parse(product.imageUriStr));
+    else
+        tempDialogImageView.setImageResource(android.R.drawable.ic_menu_gallery);
+    layout.addView(tempDialogImageView);
+
+    // Photo pick button
+    Button btnPhoto = new Button(this);
+    btnPhoto.setText("📷 फोटो चुनें / बदलें");
+    btnPhoto.setTextColor(Color.WHITE);
+    btnPhoto.setBackgroundColor(Color.parseColor("#6200EE"));
+    LinearLayout.LayoutParams bpP = new LinearLayout.LayoutParams(-1, -2);
+    bpP.setMargins(0, 0, 0, 20);
+    btnPhoto.setLayoutParams(bpP);
+    btnPhoto.setOnClickListener(v -> {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("image/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(intent, PICK_IMAGE_PRODUCT);
+    });
+    layout.addView(btnPhoto);
+
+    // Hindi Name
+    addDialogLabel(layout, "मिठाई का नाम (हिंदी) *");
+    EditText etHindi = new EditText(this);
+    etHindi.setHint("जैसे: गुलाब जामुन");
+    if (isEditing) etHindi.setText(product.name);
+    layout.addView(etHindi);
+
+    // English Name
+    addDialogLabel(layout, "मिठाई का नाम (English)");
+    EditText etEnglish = new EditText(this);
+    etEnglish.setHint("e.g. Gulab Jamun");
+    if (isEditing) etEnglish.setText(product.nameEn);
+    layout.addView(etEnglish);
+
+    // Rate
+    addDialogLabel(layout, "रेट (₹ per kg) *");
+    EditText etRate = new EditText(this);
+    etRate.setHint("जैसे: 360");
+    etRate.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
+        | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+    if (isEditing) etRate.setText(String.valueOf((int) product.price));
+    layout.addView(etRate);
+
+    builder.setView(sv);
+    builder.setPositiveButton(isEditing ? "💾 Save" : "➕ जोड़ें", (dialog, which) -> {
+        String nameH = etHindi.getText().toString().trim();
+        String nameE = etEnglish.getText().toString().trim();
+        String rateStr = etRate.getText().toString().trim();
+
+        if (nameH.isEmpty() || rateStr.isEmpty()) {
+            Toast.makeText(this, "नाम और रेट जरूरी है!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (nameE.isEmpty()) nameE = nameH;
+        double rate = Double.parseDouble(rateStr);
+
+        if (isEditing) {
+            product.name = nameH;
+            product.nameEn = nameE;
+            product.price = rate;
+            product.imageUriStr = tempSelectedImageUri;
+            Toast.makeText(this, "✅ " + nameH + " Update हो गई!", Toast.LENGTH_SHORT).show();
+        } else {
+            products.add(new Product("p" + System.currentTimeMillis(),
+                nameH, nameE, rate, tempSelectedImageUri, 10.0));
+            Toast.makeText(this, "✅ " + nameH + " जोड़ी गई!", Toast.LENGTH_SHORT).show();
+        }
+        renderInventoryTab();
+        renderShop();
+    });
+    builder.setNegativeButton("Cancel", null);
+    builder.show();
+}
+
+private void addDialogLabel(LinearLayout layout, String text) {
+    TextView tv = new TextView(this);
+    tv.setText(text);
+    tv.setTextSize(13);
+    tv.setTextColor(Color.parseColor("#444444"));
+    LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+    p.setMargins(0, 14, 0, 2);
+    tv.setLayoutParams(p);
+    layout.addView(tv);
+}
+
+// Image picker result
+@Override
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    super.onActivityResult(requestCode, resultCode, data);
+    if (requestCode == PICK_IMAGE_PRODUCT && resultCode == RESULT_OK && data != null) {
+        Uri uri = data.getData();
+        if (uri != null) {
+            try {
+                getContentResolver().takePersistableUriPermission(uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (Exception ignored) {}
+            tempSelectedImageUri = uri.toString();
+            if (tempDialogImageView != null)
+                tempDialogImageView.setImageURI(uri);
         }
     }
+}
 
     private void renderOrdersTab() {
-        if (dashDynamicContent == null) return;
-        dashDynamicContent.removeAllViews();
+    if (dashDynamicContent == null) return;
+    dashDynamicContent.removeAllViews();
 
-        boolean found = false;
-        for (Order o : orders) {
-            if (!shouldShowOrder(o)) continue;
-            found = true;
+    ArrayList<Order> filtered = new ArrayList<>();
+    for (Order o : orders) if (shouldShowOrder(o)) filtered.add(o);
 
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.VERTICAL);
-            row.setBackgroundColor(Color.WHITE);
-            row.setPadding(12, 12, 12, 12);
-            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
-            rowParams.setMargins(0, 4, 0, 4);
-            row.setLayoutParams(rowParams);
-            row.setElevation(1f);
-
-            TextView custText = new TextView(this);
-            custText.setText(o.customerName + " - ₹" + o.total);
-            custText.setTextSize(14);
-            custText.setTypeface(null, Typeface.BOLD);
-            row.addView(custText);
-
-            TextView timeText = new TextView(this);
-            timeText.setText("समय: " + o.time);
-            timeText.setTextSize(12);
-            timeText.setTextColor(Color.parseColor("#666666"));
-            row.addView(timeText);
-
-            dashDynamicContent.addView(row);
-        }
-
-        if (!found) {
-            TextView noData = new TextView(this);
-            noData.setText("कोई ऑर्डर नहीं मिला");
-            noData.setTextSize(14);
-            noData.setGravity(Gravity.CENTER);
-            noData.setTextColor(Color.parseColor("#999999"));
-            LinearLayout.LayoutParams noDataParams = new LinearLayout.LayoutParams(-1, 100);
-            noData.setLayoutParams(noDataParams);
-            dashDynamicContent.addView(noData);
-        }
+    if (filtered.isEmpty()) {
+        TextView noData = new TextView(this);
+        noData.setText("कोई ऑर्डर नहीं मिला");
+        noData.setGravity(Gravity.CENTER);
+        noData.setTextColor(Color.parseColor("#999999"));
+        noData.setTextSize(14);
+        noData.setLayoutParams(new LinearLayout.LayoutParams(-1, 200));
+        dashDynamicContent.addView(noData);
+        return;
     }
 
+    for (Order o : filtered) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackgroundColor(Color.WHITE);
+        card.setPadding(16, 16, 16, 16);
+        card.setElevation(4f);
+        LinearLayout.LayoutParams cP = new LinearLayout.LayoutParams(-1, -2);
+        cP.setMargins(0, 0, 0, 14);
+        card.setLayoutParams(cP);
+
+        // ── Header: Name + Status ──
+        LinearLayout hRow = new LinearLayout(this);
+        hRow.setOrientation(LinearLayout.HORIZONTAL);
+        hRow.setGravity(Gravity.CENTER_VERTICAL);
+        hRow.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+
+        TextView tvName = new TextView(this);
+        tvName.setText("👤 " + o.customerName);
+        tvName.setTextSize(16);
+        tvName.setTypeface(null, Typeface.BOLD);
+        tvName.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+        hRow.addView(tvName);
+
+        TextView tvStatus = new TextView(this);
+        tvStatus.setText(o.status);
+        tvStatus.setTextSize(11);
+        tvStatus.setPadding(14, 6, 14, 6);
+        tvStatus.setTextColor(Color.WHITE);
+        int sColor = o.status.equals("Completed") ? Color.parseColor("#4CAF50")
+                   : o.status.equals("Cancelled") ? Color.parseColor("#F44336")
+                   : Color.parseColor("#FF9800");
+        tvStatus.setBackgroundColor(sColor);
+        hRow.addView(tvStatus);
+        card.addView(hRow);
+
+        // ── Date/Time ──
+        TextView tvTime = new TextView(this);
+        tvTime.setText("📅 " + o.time);
+        tvTime.setTextSize(12);
+        tvTime.setTextColor(Color.parseColor("#777777"));
+        LinearLayout.LayoutParams tP = new LinearLayout.LayoutParams(-1, -2);
+        tP.topMargin = 6;
+        tvTime.setLayoutParams(tP);
+        card.addView(tvTime);
+
+        // ── Items summary ──
+        StringBuilder sb = new StringBuilder("🛒 ");
+        for (int i = 0; i < o.items.size(); i++) {
+            sb.append(o.items.get(i).name)
+              .append(" ×").append(o.items.get(i).qty).append("kg");
+            if (i < o.items.size() - 1) sb.append(", ");
+        }
+        TextView tvItems = new TextView(this);
+        tvItems.setText(sb.toString());
+        tvItems.setTextSize(12);
+        tvItems.setTextColor(Color.parseColor("#444444"));
+        LinearLayout.LayoutParams itP = new LinearLayout.LayoutParams(-1, -2);
+        itP.topMargin = 4;
+        tvItems.setLayoutParams(itP);
+        card.addView(tvItems);
+
+        // ── Financial cells ──
+        LinearLayout finRow = new LinearLayout(this);
+        finRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams frP = new LinearLayout.LayoutParams(-1, -2);
+        frP.setMargins(0, 10, 0, 0);
+        finRow.setLayoutParams(frP);
+        addFinCell(finRow, "कुल", "₹" + (int) o.total, Color.BLACK);
+        addFinCell(finRow, "मिला", "₹" + (int) o.received, Color.parseColor("#4CAF50"));
+        addFinCell(finRow, "बकाया", "₹" + (int) o.due,
+            o.due > 0 ? Color.parseColor("#F44336") : Color.parseColor("#4CAF50"));
+        card.addView(finRow);
+
+        // ── Action Buttons ──
+        LinearLayout btnRow = new LinearLayout(this);
+        btnRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams brP = new LinearLayout.LayoutParams(-1, -2);
+        brP.topMargin = 12;
+        btnRow.setLayoutParams(brP);
+
+        // View
+        Button btnView = makeActionBtn("👁 View", "#6200EE");
+        final Order fo = o;
+        btnView.setOnClickListener(v -> showOrderDetailDialog(fo));
+        LinearLayout.LayoutParams vP = new LinearLayout.LayoutParams(0, -2, 1f);
+        vP.setMargins(0, 0, 4, 0);
+        btnView.setLayoutParams(vP);
+        btnRow.addView(btnView);
+
+        // Udhar update
+        if (o.due > 0 && !o.status.equals("Cancelled")) {
+            Button btnPay = makeActionBtn("💰 उधार", "#FF9800");
+            btnPay.setOnClickListener(v -> showUpdateDueDialog(fo));
+            LinearLayout.LayoutParams pP = new LinearLayout.LayoutParams(0, -2, 1f);
+            pP.setMargins(4, 0, 4, 0);
+            btnPay.setLayoutParams(pP);
+            btnRow.addView(btnPay);
+        }
+
+        // Complete / Cancel — sirf Pending orders pe
+        if (o.status.equals("Pending")) {
+            Button btnDone = makeActionBtn("✅ Done", "#4CAF50");
+            btnDone.setOnClickListener(v -> {
+                fo.status = "Completed";
+                renderOrdersTab();
+                Toast.makeText(this, "✅ ऑर्डर Complete!", Toast.LENGTH_SHORT).show();
+            });
+            LinearLayout.LayoutParams dP = new LinearLayout.LayoutParams(0, -2, 1f);
+            dP.setMargins(4, 0, 4, 0);
+            btnDone.setLayoutParams(dP);
+            btnRow.addView(btnDone);
+
+            Button btnCancel = makeActionBtn("❌ Cancel", "#F44336");
+            btnCancel.setOnClickListener(v ->
+                new AlertDialog.Builder(this)
+                    .setTitle("⚠️ Cancel करें?")
+                    .setMessage(fo.customerName + " का ऑर्डर cancel करना है?")
+                    .setPositiveButton("हाँ", (d, w) -> {
+                        fo.status = "Cancelled";
+                        renderOrdersTab();
+                        Toast.makeText(this, "❌ Cancelled", Toast.LENGTH_SHORT).show();
+                    })
+                    .setNegativeButton("नहीं", null).show()
+            );
+            LinearLayout.LayoutParams xP = new LinearLayout.LayoutParams(0, -2, 1f);
+            xP.setMargins(4, 0, 0, 0);
+            btnCancel.setLayoutParams(xP);
+            btnRow.addView(btnCancel);
+        }
+
+        card.addView(btnRow);
+        dashDynamicContent.addView(card);
+    }
+}
+
+// Helper — colored button
+private Button makeActionBtn(String text, String hexColor) {
+    Button btn = new Button(this);
+    btn.setText(text);
+    btn.setTextSize(11);
+    btn.setTextColor(Color.WHITE);
+    btn.setBackgroundColor(Color.parseColor(hexColor));
+    return btn;
+}
+
+// Financial cell helper
+private void addFinCell(LinearLayout parent, String label, String value, int color) {
+    LinearLayout cell = new LinearLayout(this);
+    cell.setOrientation(LinearLayout.VERTICAL);
+    cell.setGravity(Gravity.CENTER);
+    cell.setBackgroundColor(Color.parseColor("#F5F5F5"));
+    cell.setPadding(8, 10, 8, 10);
+    LinearLayout.LayoutParams cP = new LinearLayout.LayoutParams(0, -2, 1f);
+    cP.setMargins(2, 0, 2, 0);
+    cell.setLayoutParams(cP);
+
+    TextView lbl = new TextView(this);
+    lbl.setText(label);
+    lbl.setTextSize(11);
+    lbl.setTextColor(Color.parseColor("#888888"));
+    lbl.setGravity(Gravity.CENTER);
+    cell.addView(lbl);
+
+    TextView val = new TextView(this);
+    val.setText(value);
+    val.setTextSize(14);
+    val.setTypeface(null, Typeface.BOLD);
+    val.setTextColor(color);
+    val.setGravity(Gravity.CENTER);
+    cell.addView(val);
+
+    parent.addView(cell);
+}
+
+// Order detail dialog
+private void showOrderDetailDialog(Order o) {
+    LinearLayout layout = new LinearLayout(this);
+    layout.setOrientation(LinearLayout.VERTICAL);
+    layout.setPadding(40, 20, 40, 20);
+
+    addDetailRow(layout, "👤 ग्राहक", o.customerName);
+    addDetailRow(layout, "📅 समय", o.time);
+    addDetailRow(layout, "📊 Status", o.status);
+
+    addDivider(layout);
+
+    TextView tvHead = new TextView(this);
+    tvHead.setText("🛒 Items:");
+    tvHead.setTextSize(14);
+    tvHead.setTypeface(null, Typeface.BOLD);
+    layout.addView(tvHead);
+
+    for (OrderItem item : o.items) {
+        TextView tv = new TextView(this);
+        tv.setText("  • " + item.name + " × " + item.qty + "kg = ₹" + (int) item.price);
+        tv.setTextSize(13);
+        tv.setTextColor(Color.parseColor("#333333"));
+        LinearLayout.LayoutParams iP = new LinearLayout.LayoutParams(-1, -2);
+        iP.topMargin = 4;
+        tv.setLayoutParams(iP);
+        layout.addView(tv);
+    }
+
+    addDivider(layout);
+
+    addDetailRow(layout, "💰 कुल", "₹" + (int) o.total);
+    addDetailRow(layout, "✅ मिला", "₹" + (int) o.received);
+    addDetailRow(layout, "⚠️ बकाया", "₹" + (int) o.due);
+
+    ScrollView sv = new ScrollView(this);
+    sv.addView(layout);
+
+    new AlertDialog.Builder(this)
+        .setTitle("📋 Order — " + o.customerName)
+        .setView(sv)
+        .setPositiveButton("Close", null)
+        .show();
+}
+
+private void addDetailRow(LinearLayout layout, String label, String value) {
+    LinearLayout row = new LinearLayout(this);
+    row.setOrientation(LinearLayout.HORIZONTAL);
+    LinearLayout.LayoutParams rP = new LinearLayout.LayoutParams(-1, -2);
+    rP.topMargin = 10;
+    row.setLayoutParams(rP);
+
+    TextView lbl = new TextView(this);
+    lbl.setText(label);
+    lbl.setTextSize(13);
+    lbl.setTextColor(Color.parseColor("#888888"));
+    lbl.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+    row.addView(lbl);
+
+    TextView val = new TextView(this);
+    val.setText(value);
+    val.setTextSize(13);
+    val.setTypeface(null, Typeface.BOLD);
+    val.setTextColor(Color.BLACK);
+    val.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+    row.addView(val);
+
+    layout.addView(row);
+}
+
+private void addDivider(LinearLayout layout) {
+    View div = new View(this);
+    div.setBackgroundColor(Color.parseColor("#E0E0E0"));
+    LinearLayout.LayoutParams dP = new LinearLayout.LayoutParams(-1, 2);
+    dP.setMargins(0, 14, 0, 14);
+    div.setLayoutParams(dP);
+    layout.addView(div);
+}
+
+// Udhar update dialog
+private void showUpdateDueDialog(Order o) {
+    LinearLayout layout = new LinearLayout(this);
+    layout.setOrientation(LinearLayout.VERTICAL);
+    layout.setPadding(40, 20, 40, 20);
+
+    EditText etPay = new EditText(this);
+    etPay.setHint("कितने ₹ मिले?");
+    etPay.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+    layout.addView(etPay);
+
+    new AlertDialog.Builder(this)
+        .setTitle("💰 उधार Update — " + o.customerName)
+        .setMessage("बाकी बकाया: ₹" + (int) o.due)
+        .setView(layout)
+        .setPositiveButton("💾 Update", (d, w) -> {
+            String s = etPay.getText().toString().trim();
+            if (s.isEmpty()) return;
+            double payment = Math.min(Double.parseDouble(s), o.due);
+            o.received += payment;
+            o.due -= payment;
+            if (o.due <= 0) {
+                o.due = 0;
+                o.status = "Completed";
+                Toast.makeText(this, "🎉 पूरा उधार Clear!", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "✅ ₹" + (int) payment + " मिले, बकाया: ₹" + (int) o.due, Toast.LENGTH_SHORT).show();
+            }
+            renderOrdersTab();
+        })
+        .setNegativeButton("Cancel", null)
+        .show();
+                }
     private void renderAnalyticsTab() {
         if (dashDynamicContent == null) return;
         dashDynamicContent.removeAllViews();
@@ -678,8 +1107,8 @@ public class MainActivity extends Activity {
         if (isHindi) {
             if (btnShopView != null) btnShopView.setText("🛍️ दुकान");
             if (btnDashView != null) btnDashView.setText("📊 डैशबोर्ड");
-            if (tabInventory != null) tabInventory.setText("📦 स्टॉक");
-            if (tabOrders != null) tabOrders.setText("🧾 उधारी");
+            if (tabInventory != null) tabInventory.setText(isHindi ? "💰 रेट" : "💰 Rate");
+            if (tabOrders != null) tabOrders.setText(isHindi ? "🧾 ऑर्डर्स" : "🧾 Orders");
             if (tabAnalytics != null) tabAnalytics.setText("📈 रिपोर्ट");
             if (etSearchName != null) etSearchName.setHint("🔍 नाम खोजें...");
         } else {
@@ -697,22 +1126,30 @@ public class MainActivity extends Activity {
 
     // ==================== DIALOG FUNCTIONS ====================
     private void showLanguageSettingsDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(isHindi ? "⚙️ सेटिंग्स" : "⚙️ Settings");
+    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    builder.setTitle(isHindi ? "⚙️ सेटिंग्स" : "⚙️ Settings");
+
+    if (!isAppActivated) {
+        // Demo mode — License Panel dikhao
         String[] options = isHindi
-                ? new String[]{"🌐 English", "🔑 लाइसेंस पैनल", "🛠️ Admin Panel"}
-                : new String[]{"🌐 Hindi", "🔑 License Panel", "🛠️ Admin Panel"};
+            ? new String[]{"🌐 English", "🔑 लाइसेंस पैनल", "🛠️ Admin Panel"}
+            : new String[]{"🌐 Hindi", "🔑 License Panel", "🛠️ Admin Panel"};
         builder.setItems(options, (dialog, which) -> {
-            if (which == 0) {
-                isHindi = !isHindi;
-                updateUI();
-            } else if (which == 1) {
-                showActivationSystemDialog();
-            } else {
-                verifyAdminAndOpenGenerator();
-            }
+            if (which == 0) { isHindi = !isHindi; updateUI(); }
+            else if (which == 1) { showActivationSystemDialog(); }
+            else { verifyAdminAndOpenGenerator(); }
         });
-        builder.show();
+    } else {
+        // Activated — License Panel hide
+        String[] options = isHindi
+            ? new String[]{"🌐 English", "🛠️ Admin Panel"}
+            : new String[]{"🌐 Hindi", "🛠️ Admin Panel"};
+        builder.setItems(options, (dialog, which) -> {
+            if (which == 0) { isHindi = !isHindi; updateUI(); }
+            else { verifyAdminAndOpenGenerator(); }
+        });
+    }
+    builder.show();
     }
 
     private void showAddProductDialog() {
@@ -838,7 +1275,7 @@ public class MainActivity extends Activity {
     layout.addView(tvLabel);
 
     EditText etKey = new EditText(this);
-    etKey.setHint("MITHAI-XXXXXX-XX-893");
+    etKey.setHint("XXXXXX-XXXXXX-XX-XXX");
     etKey.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
                        android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
     layout.addView(etKey);
