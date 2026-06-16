@@ -20,7 +20,7 @@ import com.google.firebase.auth.FirebaseUser;
 public class KeyGeneratorActivity extends Activity {
 
     // ⚠️ यहाँ अपनी असली Gmail ID दोबारा चेक कर लें भाई
-    private static final String ADMIN_EMAIL = "your_google_email@gmail.com"; 
+    private static final String ADMIN_EMAIL = "vikarmsrkian6514@gmail.com"; 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
