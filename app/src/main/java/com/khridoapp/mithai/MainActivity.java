@@ -495,7 +495,8 @@ private String tempSelectedImageUri = "";
             advBtn.setPadding(0, 0, 0, 0);
             advBtn.setBackground(advBtn.getBackground());
             advBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(44), 1f));
-            advBtn.setInsetTop(0); advBtn.setInsetBottom(0);
+            advBtn.setPadding(0, 0, 0, 0);
+            advBtn.setBackground(advBtn.getBackground());
 
             addBtn.setOnClickListener(v -> {
                 String qtyStr = qtyInput.getText().toString().trim();
