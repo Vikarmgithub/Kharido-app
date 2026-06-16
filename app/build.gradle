@@ -1,5 +1,4 @@
 apply plugin: 'com.android.application'
-// अगर फायरबेस प्लगइन यूज़ कर रहे हैं तो: apply plugin: 'com.google.gms.google-services'
 
 android {
     compileSdkVersion 30 // या जो भी आपका है
@@ -11,12 +10,11 @@ android {
         // ...
     }
 
-    // 🌟 यहाँ पर हमने जादू वाला कोड फिट कर दिया है
+    // 🌟 यहाँ पुराना सिंटैक्स सेट कर दिया है जो 6.1.1 पर 100% काम करेगा
     packagingOptions {
-        resources {
-            excludes += '/META-INF/{AL2.0,LGPL2.1}'
-            excludes += 'META-INF/com.android.tools/proguard/coroutines.pro'
-        }
+        exclude 'META-INF/com.android.tools/proguard/coroutines.pro'
+        exclude 'META-INF/AL2.0'
+        exclude 'META-INF/LGPL2.1'
     }
 }
 
