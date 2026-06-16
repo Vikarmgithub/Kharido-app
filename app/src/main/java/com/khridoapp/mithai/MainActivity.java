@@ -1532,19 +1532,6 @@ private void showUpdateDueDialog(Order o) {
                 qpRow.addView(etPrice);
                 row.addView(qpRow);
                 itemsContainer.addView(row);
-                // LINE 1529 KE BAAD YE PURA BLOCK ADD KAR
-TextView tvDiscLabel = new TextView(this);
-tvDiscLabel.setText(isHindi ? "🏷️ छूट (₹):" : "🏷️ Discount (₹):");
-tvDiscLabel.setTextSize(13);
-tvDiscLabel.setTextColor(Color.parseColor("#555555"));
-layout.addView(tvDiscLabel);
-
-EditText discountAmount = new EditText(this);
-discountAmount.setHint(isHindi ? "छूट दर्ज करें" : "Enter discount");
-discountAmount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-discountAmount.setPadding(10, 8, 10, 8);
-discountAmount.setBackgroundColor(Color.parseColor("#F5F5F5"));
-layout.addView(discountAmount);
             }
         };
 
@@ -1594,6 +1581,23 @@ layout.addView(discountAmount);
         amountReceived.setLayoutParams(amtLp);
         layout.addView(amountReceived);
 
+        // Discount
+        TextView tvDiscLabel = new TextView(this);
+        tvDiscLabel.setText(isHindi ? "🏷️ छूट (₹):" : "🏷️ Discount (₹):");
+        tvDiscLabel.setTextSize(13);
+        tvDiscLabel.setTextColor(Color.parseColor("#555555"));
+        layout.addView(tvDiscLabel);
+
+        EditText discountAmount = new EditText(this);
+        discountAmount.setHint(isHindi ? "छूट दर्ज करें" : "Enter discount");
+        discountAmount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        discountAmount.setPadding(10, 8, 10, 8);
+        discountAmount.setBackgroundColor(Color.parseColor("#F5F5F5"));
+        LinearLayout.LayoutParams discLp = new LinearLayout.LayoutParams(-1, -2);
+        discLp.setMargins(0, 4, 0, 4);
+        discountAmount.setLayoutParams(discLp);
+        layout.addView(discountAmount);
+
         builder.setView(scrollView);
         builder.setPositiveButton(isHindi ? "✅ ऑर्डर कन्फर्म करें" : "✅ Confirm Order", (dialog, which) -> {
             String name = customerName.getText().toString().trim();
@@ -1606,35 +1610,33 @@ layout.addView(discountAmount);
                 return;
             }
 
-// LINE 1609-1613 YE PURA HATA DE (discount wala block jo tune dala hai)
+            ArrayList<OrderItem> items = new ArrayList<>();
+            double total = 0;
+            for (String productId : editableQty.keySet()) {
+                double q = editableQty.get(productId)[0];
+                if (q <= 0) continue;
+                Product pr = null;
+                for (Product x : products) if (x.id.equals(productId)) { pr = x; break; }
+                if (pr != null) {
+                    double price = pr.price * q;
+                    total += price;
+                    boolean isAdv = advanceCart.containsKey(productId);
+                    items.add(new OrderItem(productId, pr.name, pr.nameEn, q, price, isAdv));
+                }
+            }
 
-ArrayList<OrderItem> items = new ArrayList<>();
-double total = 0;
-for (String productId : editableQty.keySet()) {
-    double q = editableQty.get(productId)[0];
-    if (q <= 0) continue;
-    Product pr = null;
-    for (Product x : products) if (x.id.equals(productId)) { pr = x; break; }
-    if (pr != null) {
-        double price = pr.price * q;
-        total += price;
-        boolean isAdv = advanceCart.containsKey(productId);
-        items.add(new OrderItem(productId, pr.name, pr.nameEn, q, price, isAdv));
-    }
-}
+            double received = 0;
+            try { received = Double.parseDouble(amountReceived.getText().toString()); }
+            catch (NumberFormatException e) { received = total; }
 
-double received = 0;
-try { received = Double.parseDouble(amountReceived.getText().toString()); }
-catch (NumberFormatException e) { received = total; }
+            double discount = 0;
+            try { discount = Double.parseDouble(discountAmount.getText().toString()); }
+            catch (NumberFormatException e) { discount = 0; }
 
-double discount = 0;
-try { discount = Double.parseDouble(discountAmount.getText().toString()); }
-catch (NumberFormatException e) { discount = 0; }
+            double due = total - received - discount;
+            if (due < 0) due = 0;
 
-double due = total - received - discount;
-if (due < 0) due = 0;
-
-orders.add(new Order("ORD" + System.currentTimeMillis(), name, items, total, received, due, discount));
+            orders.add(new Order("ORD" + System.currentTimeMillis(), name, items, total, received, due, discount));
             regularCart.clear();
             advanceCart.clear();
             updateCartButton();
