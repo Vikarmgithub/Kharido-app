@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.google.gms.google-services'
 
 android {
     compileSdkVersion 30 // या जो भी आपका है
@@ -10,16 +11,20 @@ android {
         // ...
     }
 
-    // 🌟 यहाँ पुराना सिंटैक्स सेट कर दिया है जो 6.1.1 पर 100% काम करेगा
     packagingOptions {
         exclude 'META-INF/com.android.tools/proguard/coroutines.pro'
         exclude 'META-INF/AL2.0'
         exclude 'META-INF/LGPL2.1'
     }
+
+    // 🌟 यहाँ पर हमने Java 8 का ताला खोल दिया है
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
-    // आपकी बाकी सारी डिपेंडेंसी और फायरबेस की लाइनें
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
     implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.android.gms:play-services-auth:20.7.0'
