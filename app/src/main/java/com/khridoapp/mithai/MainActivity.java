@@ -15,7 +15,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
@@ -44,7 +43,7 @@ public class MainActivity extends Activity {
 
     static class OrderItem {
         String id, name;
-        double qty, price; // यह 'price' ऑर्डर के समय की रेट को लॉक रखेगी
+        double qty, price; 
         boolean isAdvance;
         OrderItem(String id, String name, double qty, double price, boolean isAdvance) {
             this.id = id; this.name = name; this.qty = qty; this.price = price;
@@ -53,13 +52,13 @@ public class MainActivity extends Activity {
     }
 
     static class Order {
-        String id, customerName, time, status; // status: "Pending" या "Complete"
+        String id, customerName, time, status; // Pending, Complete, Rejected
         ArrayList<OrderItem> items;
         double total, received, due;
         Order(String id, String customerName, ArrayList<OrderItem> items, double total, double received, double due) {
             this.id = id; this.customerName = customerName; this.items = items;
             this.total = total; this.received = received; this.due = due;
-            this.status = "Pending"; // डिफ़ॉल्ट स्टेटस पेंडिंग रहेगा
+            this.status = "Pending"; // शुरुआत में हमेशा पेंडिंग रहेगा
             SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy, hh:mm a", Locale.getDefault());
             this.time = sdf.format(new Date()); 
         }
@@ -499,7 +498,6 @@ public class MainActivity extends Activity {
         for (Map.Entry<String, Double> entry : regularCart.entrySet()) {
             for (final Product p : products) {
                 if (p.id.equals(entry.getKey())) {
-                    // 🔥 यहाँ ऑर्डर प्लेस होते टाइम पक्के रेट को 'p.price' से सीधे 'OrderItem' में लॉक कर दिया गया है
                     final double amt = entry.getValue() * p.price; total += amt;
                     tempItems.add(new OrderItem(p.id, p.name, entry.getValue(), p.price, false));
 
@@ -595,7 +593,6 @@ public class MainActivity extends Activity {
         builder.show();
     }
 
-    // --- 👁️ किसी भी ऑर्डर की पूरी रसीद आइटम और सेव्ड रेट के साथ देखने का पॉपअप ---
     private void showOrderDetailsDialog(Order o) {
         AlertDialog.Builder b = new AlertDialog.Builder(this);
         b.setTitle("पक्की रसीद विवरण: " + o.customerName);
@@ -609,7 +606,6 @@ public class MainActivity extends Activity {
         tvMeta.setTextSize(13);
         mainLp.addView(tvMeta);
 
-        // आइटम वाइज़ ब्रेकडाउन लॉक रेट के साथ
         for (OrderItem item : o.items) {
             TextView tvItem = new TextView(this);
             String prefix = item.isAdvance ? "[Advance] " : "";
@@ -631,7 +627,46 @@ public class MainActivity extends Activity {
         b.show();
     }
 
-    // --- ऑर्डर्स रिपोर्ट टैब ---
+    // --- 💵 बाद में आई उधारी अपडेट करने का पॉपअप डायलॉग ---
+    private void showPayUdharDialog(final Order o) {
+        AlertDialog.Builder b = new AlertDialog.Builder(this);
+        b.setTitle("खाता उधारी जमा: " + o.customerName);
+
+        LinearLayout lp = new LinearLayout(this);
+        lp.setOrientation(LinearLayout.VERTICAL);
+        lp.setPadding(32, 24, 32, 24);
+
+        TextView tvInfo = new TextView(this);
+        tvInfo.setText("कुल बाकी उधारी राशि: ₹" + String.format("%.2f", o.due) + "\n");
+        tvInfo.setTextSize(16);
+        tvInfo.setTextColor(Color.RED);
+        lp.addView(tvInfo);
+
+        final EditText etPay = new EditText(this);
+        etPay.setHint("जमा करने वाले रुपये लिखें");
+        etPay.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        lp.addView(etPay);
+
+        b.setView(lp);
+        b.setPositiveButton("उधारी जमा करें", (dialog, which) -> {
+            String str = etPay.getText().toString();
+            if (!str.isEmpty()) {
+                double payAmount = Double.parseDouble(str);
+                if (payAmount <= o.due) {
+                    o.received += payAmount; // प्राप्त कैश बढ़ाया
+                    o.due -= payAmount;     // बाकी उधारी घटाई
+                    renderOrdersTab();       // रिपोर्ट रिफ्रेश की
+                    Toast.makeText(MainActivity.this, "उधारी खाता अपडेट सफल!", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "प्राप्त राशि बाकी उधारी से अधिक नहीं हो सकती!", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+        b.setNegativeButton("कैंसिल", null);
+        b.show();
+    }
+
+    // --- ऑर्डर्स रिपोर्ट टैब (सुरक्षित लॉक-इन सिस्टम) ---
     private void renderOrdersTab() {
         dashDynamicContent.removeAllViews();
         if (orders.isEmpty()) {
@@ -652,9 +687,9 @@ public class MainActivity extends Activity {
             lp.setMargins(0, 4, 0, 16); 
             orderCard.setLayoutParams(lp);
             
-            // तारीख और समय
             TextView tvTime = new TextView(this);
-            tvTime.setText("📅 " + o.time + " | " + (o.status.equals("Complete") ? "🟢 Complete" : "🔴 Pending")); 
+            String statusColor = o.status.equals("Complete") ? "🟢 Complete" : (o.status.equals("Rejected") ? "❌ Rejected" : "⏳ Pending");
+            tvTime.setText("📅 " + o.time + " | " + statusColor); 
             tvTime.setTextSize(12);
             tvTime.setTextColor(Color.GRAY);
             tvTime.setPadding(0, 0, 0, 6);
@@ -667,47 +702,63 @@ public class MainActivity extends Activity {
             tvHeader.setTextSize(15);
             orderCard.addView(tvHeader);
 
-            // एक्शन बटन्स रो (View Details + Status Changer)
             LinearLayout rowActions = new LinearLayout(this);
             rowActions.setOrientation(LinearLayout.HORIZONTAL);
             rowActions.setPadding(0, 12, 0, 0);
 
-            // 1. 👁️ पूरा बिल देखें बटन
+            // पूरा बिल देखने का बटन हमेशा ऑन रहेगा
             Button btnViewDetails = new Button(this);
-            btnViewDetails.setText("👁️ पूरा बिल देखें");
+            btnViewDetails.setText("👁️ बिल विवरण");
             btnViewDetails.setTextSize(11);
             btnViewDetails.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFE0E0E0));
-            btnViewDetails.setTextColor(Color.BLACK);
             LinearLayout.LayoutParams lpAct1 = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-            lpAct1.setMargins(0, 0, 8, 0);
+            lpAct1.setMargins(0, 0, 6, 0);
             btnViewDetails.setLayoutParams(lpAct1);
             btnViewDetails.setOnClickListener(v -> showOrderDetailsDialog(o));
             rowActions.addView(btnViewDetails);
 
-            // 2. ⚙️ स्टेटस मार्क करने का बटन (Pending / Complete)
-            Button btnToggleStatus = new Button(this);
+            // 🔥 एडवांस्ड लॉकिंग और उधारी एडिटिंग सिस्टम
             if (o.status.equals("Pending")) {
-                btnToggleStatus.setText("Mark Complete");
-                btnToggleStatus.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF03DAC5));
-                btnToggleStatus.setTextColor(Color.BLACK);
-            } else {
-                btnToggleStatus.setText("Mark Pending");
-                btnToggleStatus.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFF9800));
-                btnToggleStatus.setTextColor(Color.WHITE);
+                // अगर पेंडिंग है तो ही Complete या Reject करने का ऑप्शन मिलेगा
+                Button btnComplete = new Button(this);
+                btnComplete.setText("Complete");
+                btnComplete.setTextSize(11);
+                btnComplete.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF03DAC5));
+                btnComplete.setTextColor(Color.BLACK);
+                LinearLayout.LayoutParams lpC = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                lpC.setMargins(0, 0, 6, 0);
+                btnComplete.setLayoutParams(lpC);
+                btnComplete.setOnClickListener(v -> {
+                    o.status = "Complete"; // हमेशा के लिए लॉक
+                    renderOrdersTab();
+                    Toast.makeText(MainActivity.this, "ऑर्डर पक्का हो गया! 🟢", Toast.LENGTH_SHORT).show();
+                });
+                rowActions.addView(btnComplete);
+
+                Button btnReject = new Button(this);
+                btnReject.setText("Reject");
+                btnReject.setTextSize(11);
+                btnReject.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFF5252));
+                btnReject.setTextColor(Color.WHITE);
+                btnReject.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                btnReject.setOnClickListener(v -> {
+                    o.status = "Rejected"; // हमेशा के लिए लॉक
+                    renderOrdersTab();
+                    Toast.makeText(MainActivity.this, "ऑर्डर रिजेक्ट कर दिया गया! ❌", Toast.LENGTH_SHORT).show();
+                });
+                rowActions.addView(btnReject);
+
+            } else if (o.status.equals("Complete") && o.due > 0) {
+                // अगर ऑर्डर कंप्लीट है लेकिन ग्राहक के पैसे बाकी हैं, तो "उधारी जमा करें" का बटन चालू रहेगा
+                Button btnPayUdhar = new Button(this);
+                btnPayUdhar.setText("💵 उधारी जमा करें");
+                btnPayUdhar.setTextSize(11);
+                btnPayUdhar.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFF9800));
+                btnPayUdhar.setTextColor(Color.WHITE);
+                btnPayUdhar.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.5f));
+                btnPayUdhar.setOnClickListener(v -> showPayUdharDialog(o));
+                rowActions.addView(btnPayUdhar);
             }
-            btnToggleStatus.setTextSize(11);
-            btnToggleStatus.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-            
-            btnToggleStatus.setOnClickListener(v -> {
-                if (o.status.equals("Pending")) {
-                    o.status = "Complete";
-                } else {
-                    o.status = "Pending";
-                }
-                renderOrdersTab(); // री-रेंडर करके तुरंत स्टेटस चेंज दिखाएं
-                Toast.makeText(MainActivity.this, "ऑर्डर स्टेटस बदला गया!", Toast.LENGTH_SHORT).show();
-            });
-            rowActions.addView(btnToggleStatus);
 
             orderCard.addView(rowActions);
             dashDynamicContent.addView(orderCard);
@@ -717,7 +768,12 @@ public class MainActivity extends Activity {
     private void renderAnalyticsTab() {
         dashDynamicContent.removeAllViews();
         double totalSales = 0, totalReceived = 0;
-        for (Order o : orders) { totalSales += o.total; totalReceived += o.received; }
+        for (Order o : orders) { 
+            if (!o.status.equals("Rejected")) { // रिजेक्टेड ऑर्डर्स को कमाई में नहीं जोड़ेंगे
+                totalSales += o.total; 
+                totalReceived += o.received; 
+            }
+        }
         TextView tv = new TextView(this);
         tv.setText("📊 काउंटर क्लोजिंग REPORT\n\n💰 कुल गल्ला बिक्री: ₹" + String.format("%.2f", totalSales) + "\n💵 कुल गल्ला नकद प्राप्त: ₹" + String.format("%.2f", totalReceived) + "\n🔴 बाजार में बाकी उधारी: ₹" + String.format("%.2f", (totalSales - totalReceived)));
         tv.setTextSize(16); tv.setPadding(20, 20, 20, 20);
