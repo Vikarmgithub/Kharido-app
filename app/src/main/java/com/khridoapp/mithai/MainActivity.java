@@ -2,6 +2,7 @@ package com.khridoapp.mithai;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -23,6 +24,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
@@ -34,20 +36,22 @@ public class MainActivity extends Activity {
     private static String selectedImageUriStr = ""; 
     private static ImageView previewImageView; 
 
+    private boolean isHindi = true; 
+
     static class Product {
-        String id, name, imageUriStr; 
+        String id, name, nameEn, imageUriStr; 
         double price;
-        Product(String id, String name, double price, String imageUriStr) {
-            this.id = id; this.name = name; this.price = price; this.imageUriStr = imageUriStr;
+        Product(String id, String name, String nameEn, double price, String imageUriStr) {
+            this.id = id; this.name = name; this.nameEn = nameEn; this.price = price; this.imageUriStr = imageUriStr;
         }
     }
 
     static class OrderItem {
-        String id, name;
+        String id, name, nameEn;
         double qty, price; 
         boolean isAdvance;
-        OrderItem(String id, String name, double qty, double price, boolean isAdvance) {
-            this.id = id; this.name = name; this.qty = qty; this.price = price;
+        OrderItem(String id, String name, String nameEn, double qty, double price, boolean isAdvance) {
+            this.id = id; this.name = name; this.nameEn = nameEn; this.qty = qty; this.price = price;
             this.isAdvance = isAdvance;
         }
     }
@@ -55,6 +59,7 @@ public class MainActivity extends Activity {
     static class Order {
         String id, customerName, time, status; 
         String dateKey, monthKey; 
+        long timestamp; // Custom date comparison range ke liye variable
         ArrayList<OrderItem> items;
         double total, received, due;
         Order(String id, String customerName, ArrayList<OrderItem> items, double total, double received, double due) {
@@ -63,6 +68,8 @@ public class MainActivity extends Activity {
             this.status = "Pending"; 
             
             Date currentDate = new Date();
+            this.timestamp = currentDate.getTime(); // Current raw time save kiya range matching ke liye
+            
             SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy, hh:mm a", Locale.getDefault());
             this.time = sdf.format(currentDate); 
             
@@ -78,13 +85,18 @@ public class MainActivity extends Activity {
     private HashMap<String, Double> advanceCart = new HashMap<>();
 
     private ScrollView shopContainer, dashboardContainer;
-    private LinearLayout shopProductList, dashDynamicContent, filterBarContainer;
-    private Button btnShopView, btnDashView, btnFloatingCart;
+    private LinearLayout shopProductList, dashDynamicContent, filterBarContainer, customDateRow;
+    private Button btnShopView, btnDashView, btnFloatingCart, btnFromDate, btnToDate;
     private Button tabInventory, tabOrders, tabAnalytics;
+    private ImageView btnSettings; 
     
     private EditText etSearchName;
     private Spinner spDateFilter;
     private String currentSubTab = "Inventory";
+
+    // Range keys in milliseconds
+    private long fromTimestamp = 0;
+    private long toTimestamp = Long.MAX_VALUE;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,10 +108,13 @@ public class MainActivity extends Activity {
         shopProductList = findViewById(R.id.shopProductList);
         dashDynamicContent = findViewById(R.id.dashDynamicContent);
         filterBarContainer = findViewById(R.id.filterBarContainer);
+        customDateRow = findViewById(R.id.customDateRow);
         
         btnShopView = findViewById(R.id.btnShopView);
         btnDashView = findViewById(R.id.btnDashView);
         btnFloatingCart = findViewById(R.id.btnFloatingCart);
+        btnFromDate = findViewById(R.id.btnFromDate);
+        btnToDate = findViewById(R.id.btnToDate);
         
         tabInventory = findViewById(R.id.tabInventory);
         tabOrders = findViewById(R.id.tabOrders);
@@ -107,14 +122,15 @@ public class MainActivity extends Activity {
         
         etSearchName = findViewById(R.id.etSearchName);
         spDateFilter = findViewById(R.id.spDateFilter);
+        btnSettings = findViewById(R.id.btnSettings);
+        
+        if (btnSettings != null) {
+            btnSettings.setOnClickListener(v -> showLanguageSettingsDialog());
+        }
 
-        ArrayAdapter<String> filterAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new String[]{"All Orders", "Today", "This Month"});
-        filterAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spDateFilter.setAdapter(filterAdapter);
-
+        setupDateFilterSpinner();
         initSeedProducts();
-        renderShop();
-        updateCartButton();
+        updateUI(); 
 
         btnShopView.setOnClickListener(v -> {
             shopContainer.setVisibility(View.VISIBLE);
@@ -150,18 +166,124 @@ public class MainActivity extends Activity {
 
         spDateFilter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) { refreshCurrentReportTab(); }
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // Agar position 3 yaani Custom Date chuna hai to buttons row open karein
+                if (position == 3) {
+                    customDateRow.setVisibility(View.VISIBLE);
+                } else {
+                    customDateRow.setVisibility(View.GONE);
+                    fromTimestamp = 0;
+                    toTimestamp = Long.MAX_VALUE;
+                }
+                refreshCurrentReportTab();
+            }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
 
+        // 📅 From and To Click triggers
+        btnFromDate.setOnClickListener(v -> showDatePicker(true));
+        btnToDate.setOnClickListener(v -> showDatePicker(false));
+
         btnFloatingCart.setOnClickListener(v -> showCartDialog());
     }
 
-    // 🔥 गायब हुआ मेथड वापस जोड़ दिया गया है ताकि कंपाइलर एरर न दे
+    private void setupDateFilterSpinner() {
+        String[] filterOptions = isHindi ? 
+                new String[]{"सभी ऑर्डर्स", "आज के", "इस महीने के", "📅 कस्टम तारीख (Range)"} : 
+                new String[]{"All Orders", "Today", "This Month", "📅 Custom Range"};
+                
+        ArrayAdapter<String> filterAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, filterOptions);
+        filterAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spDateFilter.setAdapter(filterAdapter);
+    }
+
+    // 🗓️ Android system Native Calendar popup integration
+    private void showDatePicker(final boolean isFrom) {
+        final Calendar calendar = Calendar.getInstance();
+        int year = calendar.get(Calendar.YEAR);
+        int month = calendar.get(Calendar.MONTH);
+        int day = calendar.get(Calendar.DAY_OF_MONTH);
+
+        DatePickerDialog dialog = new DatePickerDialog(this, (view, selectedYear, selectedMonth, selectedDay) -> {
+            Calendar pickedCal = Calendar.getInstance();
+            pickedCal.set(selectedYear, selectedMonth, selectedDay);
+            
+            if (isFrom) {
+                pickedCal.set(Calendar.HOUR_OF_DAY, 0);
+                pickedCal.set(Calendar.MINUTE, 0);
+                pickedCal.set(Calendar.SECOND, 0);
+                fromTimestamp = pickedCal.getTimeInMillis();
+                
+                SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault());
+                btnFromDate.setText((isHindi ? "से: " : "From: ") + sdf.format(pickedCal.getTime()));
+            } else {
+                pickedCal.set(Calendar.HOUR_OF_DAY, 23);
+                pickedCal.set(Calendar.MINUTE, 59);
+                pickedCal.set(Calendar.SECOND, 59);
+                toTimestamp = pickedCal.getTimeInMillis();
+                
+                SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault());
+                btnToDate.setText((isHindi ? "तक: " : "To: ") + sdf.format(pickedCal.getTime()));
+            }
+            refreshCurrentReportTab(); // Filter data refresh on range selection completion
+        }, year, month, day);
+        dialog.show();
+    }
+
+    private void showLanguageSettingsDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(isHindi ? "⚙️ सेटिंग (Settings)" : "⚙️ Settings");
+        
+        String[] languages = {"Standard Hindi (हिंदी)", "English"};
+        int checkedItem = isHindi ? 0 : 1;
+        
+        builder.setSingleChoiceItems(languages, checkedItem, (dialog, which) -> {
+            if (which == 0) {
+                isHindi = true;
+                Toast.makeText(MainActivity.this, "भाषा: हिंदी सेट की गई", Toast.LENGTH_SHORT).show();
+            } else {
+                isHindi = false;
+                Toast.makeText(MainActivity.this, "Language: English Selected", Toast.LENGTH_SHORT).show();
+            }
+            dialog.dismiss();
+            updateUI(); 
+        });
+        builder.show();
+    }
+
+    private void updateUI() {
+        if (isHindi) {
+            btnShopView.setText("🏪 दुकान काउंटर");
+            btnDashView.setText("📊 डैशबोर्ड");
+            tabInventory.setText("📦 स्टॉक माल");
+            tabOrders.setText("🧾 उधारी सूची");
+            tabAnalytics.setText("📈 क्लोजिंग रिपोर्ट");
+            etSearchName.setHint("🔍 ग्राहक के नाम से खोजें...");
+            btnFromDate.setText("से: चुनें");
+            btnToDate.setText("तक: चुनें");
+        } else {
+            btnShopView.setText("🏪 Shop Counter");
+            btnDashView.setText("📊 Dashboard");
+            tabInventory.setText("📦 Inventory");
+            tabOrders.setText("🧾 Udhar Orders");
+            tabAnalytics.setText("📈 Reports");
+            etSearchName.setHint("🔍 Search by Customer Name...");
+            btnFromDate.setText("From: Select");
+            btnToDate.setText("To: Select");
+        }
+        setupDateFilterSpinner();
+        updateCartButton();
+        renderShop();
+        if (dashboardContainer.getVisibility() == View.VISIBLE) {
+            refreshCurrentReportTab();
+            if (currentSubTab.equals("Inventory")) renderInventoryTab();
+        }
+    }
+
     private void updateCartButton() {
         int totalItems = regularCart.size() + advanceCart.size();
-        btnFloatingCart.setText("🛒 कार्ट (" + totalItems + ")");
+        btnFloatingCart.setText(isHindi ? ("🛒 कार्ट (" + totalItems + ")") : ("🛒 Cart (" + totalItems + ")"));
     }
 
     private void switchSubTab(Button activeTab) {
@@ -196,15 +318,21 @@ public class MainActivity extends Activity {
             return false; 
         }
 
-        String selectedFilter = spDateFilter.getSelectedItem().toString();
+        int position = spDateFilter.getSelectedItemPosition();
         String todayKey = new SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault()).format(new Date());
         String thisMonthKey = new SimpleDateFormat("MMM-yyyy", Locale.getDefault()).format(new Date());
 
-        if (selectedFilter.equals("Today") && !o.dateKey.equals(todayKey)) {
+        if (position == 1 && !o.dateKey.equals(todayKey)) { 
             return false;
         }
-        if (selectedFilter.equals("This Month") && !o.monthKey.equals(thisMonthKey)) {
+        if (position == 2 && !o.monthKey.equals(thisMonthKey)) { 
             return false;
+        }
+        // 🔥 Custom Calendar Range Logic
+        if (position == 3) {
+            if (o.timestamp < fromTimestamp || o.timestamp > toTimestamp) {
+                return false;
+            }
         }
 
         return true;
@@ -212,9 +340,9 @@ public class MainActivity extends Activity {
 
     private void initSeedProducts() {
         if (products.isEmpty()) {
-            products.add(new Product("p1", "गुलाब जामुन", 360, ""));
-            products.add(new Product("p2", "काजू कतली", 820, ""));
-            products.add(new Product("p3", "रसगुल्ला", 320, ""));
+            products.add(new Product("p1", "गुलाब जामुन", "Gulab Jamun", 360, ""));
+            products.add(new Product("p2", "काजू कतली", "Kaju Katli", 820, ""));
+            products.add(new Product("p3", "रसगुल्ला", "Rasgulla", 320, ""));
         }
     }
 
@@ -272,14 +400,14 @@ public class MainActivity extends Activity {
             nameContainer.setOrientation(LinearLayout.VERTICAL);
             
             TextView tvName = new TextView(this);
-            tvName.setText(p.name);
+            tvName.setText(isHindi ? p.name : p.nameEn);
             tvName.setTextSize(18);
             tvName.setTypeface(null, Typeface.BOLD);
             tvName.setTextColor(0xFF212121);
             nameContainer.addView(tvName);
 
             TextView tvPrice = new TextView(this);
-            tvPrice.setText("भाव: ₹" + p.price + "/kg");
+            tvPrice.setText(isHindi ? ("भाव: ₹" + p.price + "/kg") : ("Rate: ₹" + p.price + "/kg"));
             tvPrice.setTextColor(0xFF757575);
             tvPrice.setTextSize(13);
             nameContainer.addView(tvPrice);
@@ -314,7 +442,7 @@ public class MainActivity extends Activity {
             qtyBox.addView(spinnerRow);
 
             TextView lblKg = new TextView(this);
-            lblKg.setText("⚖️ वजन मात्रा");
+            lblKg.setText(isHindi ? "⚖️ वजन मात्रा" : "⚖️ Weight Qty");
             lblKg.setTextSize(11);
             lblKg.setTextColor(0xFF757575);
             qtyBox.addView(lblKg);
@@ -325,12 +453,12 @@ public class MainActivity extends Activity {
             rsBox.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
             final EditText etRs = new EditText(this);
-            etRs.setHint("₹ रुपये");
+            etRs.setHint(isHindi ? "₹ रुपये" : "₹ Cash");
             etRs.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
             rsBox.addView(etRs);
 
             TextView lblRs = new TextView(this);
-            lblRs.setText("💰 कुल कैश");
+            lblRs.setText(isHindi ? "💰 कुल कैश" : "💰 Total Price");
             lblRs.setTextSize(11);
             lblRs.setTextColor(0xFF757575);
             rsBox.addView(lblRs);
@@ -379,7 +507,7 @@ public class MainActivity extends Activity {
             actionRow.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
             Button btnAddRegular = new Button(this);
-            btnAddRegular.setText("🛒 काउंटर कार्ट");
+            btnAddRegular.setText(isHindi ? "🛒 काउंटर कार्ट" : "🛒 Regular Cart");
             btnAddRegular.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF6200EE));
             btnAddRegular.setTextColor(Color.WHITE);
             LinearLayout.LayoutParams lpBtn1 = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
@@ -393,7 +521,7 @@ public class MainActivity extends Activity {
                     double qtyInKg = spUnit.getSelectedItem().toString().equals("gm") ? (inputVal / 1000.0) : inputVal;
                     double current = regularCart.containsKey(p.id) ? regularCart.get(p.id) : 0;
                     regularCart.put(p.id, current + qtyInKg);
-                    Toast.makeText(MainActivity.this, p.name + " कार्ट में जमा!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, (isHindi ? p.name : p.nameEn) + " Cart Done!", Toast.LENGTH_SHORT).show();
                     etKg.setText(""); etRs.setText("");
                     updateCartButton();
                 }
@@ -401,7 +529,7 @@ public class MainActivity extends Activity {
             actionRow.addView(btnAddRegular);
 
             Button btnAddAdvance = new Button(this);
-            btnAddAdvance.setText("📋 एडवांस Book");
+            btnAddAdvance.setText(isHindi ? "📋 एडवांस Book" : "📋 Book Advance");
             btnAddAdvance.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFF9800));
             btnAddAdvance.setTextColor(Color.WHITE);
             btnAddAdvance.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
@@ -413,7 +541,7 @@ public class MainActivity extends Activity {
                     double qtyInKg = spUnit.getSelectedItem().toString().equals("gm") ? (inputVal / 1000.0) : inputVal;
                     double current = advanceCart.containsKey(p.id) ? advanceCart.get(p.id) : 0;
                     advanceCart.put(p.id, current + qtyInKg);
-                    Toast.makeText(MainActivity.this, p.name + " एडवांस बुक!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, (isHindi ? p.name : p.nameEn) + " Advance Booked!", Toast.LENGTH_SHORT).show();
                     etKg.setText(""); etRs.setText("");
                     updateCartButton();
                 }
@@ -429,7 +557,7 @@ public class MainActivity extends Activity {
         dashDynamicContent.removeAllViews();
 
         Button btnAddNewProduct = new Button(this);
-        btnAddNewProduct.setText("➕ नई मिठाई दुकान में जोड़ें");
+        btnAddNewProduct.setText(isHindi ? "➕ नई मिठाई दुकान में जोड़ें" : "➕ Add New Item");
         btnAddNewProduct.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF6200EE));
         btnAddNewProduct.setTextColor(Color.WHITE);
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -461,13 +589,14 @@ public class MainActivity extends Activity {
             row.addView(ivThumb);
 
             TextView tvInfo = new TextView(this);
-            tvInfo.setText(p.name + "\nभाव: ₹" + p.price + "/kg");
+            String itemDetails = isHindi ? (p.name + "\nभाव: ₹" + p.price + "/kg") : (p.nameEn + "\nRate: ₹" + p.price + "/kg");
+            tvInfo.setText(itemDetails);
             tvInfo.setTextSize(16);
             tvInfo.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
             row.addView(tvInfo);
 
             Button btnEditProduct = new Button(this);
-            btnEditProduct.setText("✏️ सुधारें");
+            btnEditProduct.setText(isHindi ? "✏️ सुधारें" : "✏️ Edit");
             btnEditProduct.setTextSize(12);
             btnEditProduct.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF03DAC5));
             btnEditProduct.setTextColor(Color.BLACK);
@@ -480,20 +609,25 @@ public class MainActivity extends Activity {
     private void showAddProductDialog() {
         selectedImageUriStr = ""; 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("➕ नई मिठाई का विवरण");
+        builder.setTitle(isHindi ? "➕ नई मिठाई का विवरण" : "➕ Add New Product");
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(32, 24, 32, 24);
-        final EditText etName = new EditText(this); etName.setHint("मिठाई का नाम लिखें"); layout.addView(etName);
-        final EditText etPrice = new EditText(this); etPrice.setHint("भाव प्रति किलो (₹)"); etPrice.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); layout.addView(etPrice);
-        Button btnSelectImg = new Button(this); btnSelectImg.setText("🖼️ गैलरी से फोटो चुनें"); layout.addView(btnSelectImg);
+        
+        final EditText etNameHi = new EditText(this); etNameHi.setHint(isHindi ? "मिठाई का हिंदी नाम" : "Product Hindi Name"); layout.addView(etNameHi);
+        final EditText etNameEn = new EditText(this); etNameEn.setHint(isHindi ? "मिठाई का अंग्रेजी नाम" : "Product English Name"); layout.addView(etNameEn);
+        final EditText etPrice = new EditText(this); etPrice.setHint(isHindi ? "भाव प्रति किलो (₹)" : "Rate per KG (₹)"); etPrice.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); layout.addView(etPrice);
+        
+        Button btnSelectImg = new Button(this); btnSelectImg.setText(isHindi ? "🖼️ गैलरी से फोटो चुनें" : "🖼️ Choose Photo"); layout.addView(btnSelectImg);
         previewImageView = new ImageView(this); previewImageView.setLayoutParams(new LinearLayout.LayoutParams(150, 150)); previewImageView.setVisibility(View.GONE); layout.addView(previewImageView);
         btnSelectImg.setOnClickListener(v -> openGallery());
         builder.setView(layout);
-        builder.setPositiveButton("सुरक्षित करें", (dialog, which) -> {
-            String name = etName.getText().toString(); String priceStr = etPrice.getText().toString();
-            if (!name.isEmpty() && !priceStr.isEmpty()) {
-                products.add(new Product("p" + (products.size() + 1), name, Double.parseDouble(priceStr), selectedImageUriStr));
+        
+        builder.setPositiveButton(isHindi ? "सुरक्षित करें" : "Save", (dialog, which) -> {
+            String nameHi = etNameHi.getText().toString(); String nameEn = etNameEn.getText().toString(); String priceStr = etPrice.getText().toString();
+            if (!nameHi.isEmpty() && !priceStr.isEmpty()) {
+                if(nameEn.isEmpty()) nameEn = nameHi;
+                products.add(new Product("p" + (products.size() + 1), nameHi, nameEn, Double.parseDouble(priceStr), selectedImageUriStr));
                 renderInventoryTab();
             }
         });
@@ -503,20 +637,28 @@ public class MainActivity extends Activity {
     private void showEditProductDialog(final Product p) {
         selectedImageUriStr = p.imageUriStr; 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("✏️ मिठाई का विवरण बदलें");
+        builder.setTitle(isHindi ? "✏️ मिठाई का विवरण बदलें" : "✏️ Edit Product details");
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(32, 24, 32, 24);
-        final EditText etName = new EditText(this); etName.setText(p.name); layout.addView(etName);
+        
+        final EditText etNameHi = new EditText(this); etNameHi.setText(p.name); layout.addView(etNameHi);
+        final EditText etNameEn = new EditText(this); etNameEn.setText(p.nameEn); layout.addView(etNameEn);
         final EditText etPrice = new EditText(this); etPrice.setText(String.valueOf(p.price)); etPrice.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); layout.addView(etPrice);
-        Button btnSelectImg = new Button(this); btnSelectImg.setText("🖼️ नई फोटो बदलें"); layout.addView(btnSelectImg);
+        
+        Button btnSelectImg = new Button(this); btnSelectImg.setText(isHindi ? "🖼️ नई फोटो बदलें" : "🖼️ Change Photo"); layout.addView(btnSelectImg);
         previewImageView = new ImageView(this); previewImageView.setLayoutParams(new LinearLayout.LayoutParams(150, 150));
         if (p.imageUriStr != null && !p.imageUriStr.isEmpty()) { previewImageView.setImageURI(Uri.parse(p.imageUriStr)); previewImageView.setVisibility(View.VISIBLE); }
         btnSelectImg.setOnClickListener(v -> openGallery());
         builder.setView(layout);
-        builder.setPositiveButton("बदलाव सेव करें", (dialog, which) -> {
-            if (!etName.getText().toString().isEmpty() && !etPrice.getText().toString().isEmpty()) {
-                p.name = etName.getText().toString(); p.price = Double.parseDouble(etPrice.getText().toString()); p.imageUriStr = selectedImageUriStr; renderInventoryTab();
+        
+        builder.setPositiveButton(isHindi ? "बदलाव सेव करें" : "Update", (dialog, which) -> {
+            if (!etNameHi.getText().toString().isEmpty() && !etPrice.getText().toString().isEmpty()) {
+                p.name = etNameHi.getText().toString(); 
+                p.nameEn = etNameEn.getText().toString().isEmpty() ? etNameHi.getText().toString() : etNameEn.getText().toString();
+                p.price = Double.parseDouble(etPrice.getText().toString()); 
+                p.imageUriStr = selectedImageUriStr; 
+                renderInventoryTab();
             }
         });
         builder.show();
@@ -535,15 +677,17 @@ public class MainActivity extends Activity {
             for (final Product p : products) {
                 if (p.id.equals(entry.getKey())) {
                     final double amt = entry.getValue() * p.price; total += amt;
-                    tempItems.add(new OrderItem(p.id, p.name, entry.getValue(), p.price, false));
+                    tempItems.add(new OrderItem(p.id, p.name, p.nameEn, entry.getValue(), p.price, false));
                     LinearLayout row = new LinearLayout(this);
-                    TextView tv = new TextView(this); tv.setText("• " + p.name + ": " + String.format("%.3f", entry.getValue()) + " kg = ₹" + String.format("%.2f", amt));
+                    TextView tv = new TextView(this); 
+                    String displayName = isHindi ? p.name : p.nameEn;
+                    tv.setText("• " + displayName + ": " + String.format("%.3f", entry.getValue()) + " kg = ₹" + String.format("%.2f", amt));
                     tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)); row.addView(tv);
-                    Button btnEditItem = new Button(this); btnEditItem.setText("⚙️ बदलें"); btnEditItem.setTextSize(10);
+                    Button btnEditItem = new Button(this); btnEditItem.setText(isHindi ? "⚙️ बदलें" : "⚙️ Edit"); btnEditItem.setTextSize(10);
                     btnEditItem.setOnClickListener(v -> {
-                        AlertDialog.Builder b = new AlertDialog.Builder(MainActivity.this); b.setTitle(p.name + " मात्रा");
+                        AlertDialog.Builder b = new AlertDialog.Builder(MainActivity.this); b.setTitle(displayName);
                         final EditText in = new EditText(MainActivity.this); in.setText(String.valueOf(entry.getValue())); b.setView(in);
-                        b.setPositiveButton("ओके", (d, w) -> { if(!in.getText().toString().isEmpty()) { regularCart.put(p.id, Double.parseDouble(in.getText().toString())); showCartDialog(); } }); b.show();
+                        b.setPositiveButton("OK", (d, w) -> { if(!in.getText().toString().isEmpty()) { regularCart.put(p.id, Double.parseDouble(in.getText().toString())); showCartDialog(); } }); b.show();
                     });
                     row.addView(btnEditItem); layout.addView(row);
                 }
@@ -554,37 +698,47 @@ public class MainActivity extends Activity {
             for (final Product p : products) {
                 if (p.id.equals(entry.getKey())) {
                     final double amt = entry.getValue() * p.price; total += amt;
-                    tempItems.add(new OrderItem(p.id, p.name, entry.getValue(), p.price, true));
+                    tempItems.add(new OrderItem(p.id, p.name, p.nameEn, entry.getValue(), p.price, true));
                     LinearLayout row = new LinearLayout(this);
-                    TextView tv = new TextView(this); tv.setText("• [Adv] " + p.name + ": " + String.format("%.3f", entry.getValue()) + " kg = ₹" + String.format("%.2f", amt));
+                    TextView tv = new TextView(this); 
+                    String displayName = isHindi ? p.name : p.nameEn;
+                    tv.setText("• [Adv] " + displayName + ": " + String.format("%.3f", entry.getValue()) + " kg = ₹" + String.format("%.2f", amt));
                     tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)); row.addView(tv);
-                    Button btnEditItem = new Button(this); btnEditItem.setText("⚙️ बदलें"); btnEditItem.setTextSize(10);
+                    Button btnEditItem = new Button(this); btnEditItem.setText(isHindi ? "⚙️ बदलें" : "⚙️ Edit"); btnEditItem.setTextSize(10);
                     btnEditItem.setOnClickListener(v -> {
-                        AlertDialog.Builder b = new AlertDialog.Builder(MainActivity.this); b.setTitle(p.name + " (Adv) मात्रा");
+                        AlertDialog.Builder b = new AlertDialog.Builder(MainActivity.this); b.setTitle(displayName + " (Adv)");
                         final EditText in = new EditText(MainActivity.this); in.setText(String.valueOf(entry.getValue())); b.setView(in);
-                        b.setPositiveButton("ओके", (d, w) -> { if(!in.getText().toString().isEmpty()) { advanceCart.put(p.id, Double.parseDouble(in.getText().toString())); showCartDialog(); } }); b.show();
+                        b.setPositiveButton("OK", (d, w) -> { if(!in.getText().toString().isEmpty()) { advanceCart.put(p.id, Double.parseDouble(in.getText().toString())); showCartDialog(); } }); b.show();
                     });
                     row.addView(btnEditItem); layout.addView(row);
                 }
             }
         }
 
-        final TextView tvTotal = new TextView(this); tvTotal.setText("\nकुल बिल राशि: ₹" + String.format("%.2f", total)); tvTotal.setTextSize(16); tvTotal.setTypeface(null, Typeface.BOLD); layout.addView(tvTotal);
-        final EditText etReceived = new EditText(this); etReceived.setHint("प्राप्त रुपये (Cash Received)"); etReceived.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); layout.addView(etReceived);
-        final TextView tvDue = new TextView(this); tvDue.setText("बाकी उधारी राशि: ₹0.00"); tvDue.setTextColor(Color.RED); layout.addView(tvDue);
+        final TextView tvTotal = new TextView(this); tvTotal.setText((isHindi ? "\nकुल बिल राशि: ₹" : "\nGrand Total: ₹") + String.format("%.2f", total)); tvTotal.setTextSize(16); tvTotal.setTypeface(null, Typeface.BOLD); layout.addView(tvTotal);
+        final EditText etReceived = new EditText(this); etReceived.setHint(isHindi ? "प्राप्त रुपये (Cash Received)" : "Cash Received (₹)"); etReceived.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); layout.addView(etReceived);
+        final TextView tvDue = new TextView(this); tvDue.setText(isHindi ? "बाकी उधारी राशि: ₹0.00" : "Remaining Due: ₹0.00"); tvDue.setTextColor(Color.RED); layout.addView(tvDue);
 
         final double finalTotal = total;
         etReceived.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             public void onTextChanged(CharSequence s, int start, int before, int count) {}
             public void afterTextChanged(Editable s) {
-                try { double rec = Double.parseDouble(s.toString()); tvDue.setText("बाकी उधारी राशि: ₹" + String.format("%.2f", Math.max(0, finalTotal - rec))); } catch (Exception e) { tvDue.setText("बाकी उधारी राशि: ₹" + String.format("%.2f", finalTotal)); }
+                try { 
+                    double rec = Double.parseDouble(s.toString()); 
+                    String dueLabel = isHindi ? "बाकी उधारी राशि: ₹" : "Remaining Due: ₹";
+                    tvDue.setText(dueLabel + String.format("%.2f", Math.max(0, finalTotal - rec))); 
+                } catch (Exception e) { 
+                    String dueLabel = isHindi ? "बाकी उधारी राशि: ₹" : "Remaining Due: ₹";
+                    tvDue.setText(dueLabel + String.format("%.2f", finalTotal)); 
+                }
             }
         });
 
-        final EditText nameInput = new EditText(this); nameInput.setHint("ग्राहक का नाम"); layout.addView(nameInput);
+        final EditText nameInput = new EditText(this); nameInput.setHint(isHindi ? "ग्राहक का नाम" : "Customer Name"); layout.addView(nameInput);
         builder.setView(layout);
-        builder.setPositiveButton("ऑर्डर डन (सेव)", (dialog, which) -> {
+        
+        builder.setPositiveButton(isHindi ? "ऑर्डर डन (सेव)" : "Save Order", (dialog, which) -> {
             String name = nameInput.getText().toString(); String recStr = etReceived.getText().toString();
             double recVal = recStr.isEmpty() ? finalTotal : Double.parseDouble(recStr);
             if (!name.isEmpty() && !tempItems.isEmpty()) {
@@ -597,26 +751,32 @@ public class MainActivity extends Activity {
 
     private void showOrderDetailsDialog(Order o) {
         AlertDialog.Builder b = new AlertDialog.Builder(this);
-        b.setTitle("पक्की रसीद विवरण: " + o.customerName);
+        b.setTitle((isHindi ? "पक्की रसीद विवरण: " : "Invoice View: ") + o.customerName);
         LinearLayout mainLp = new LinearLayout(this); mainLp.setOrientation(LinearLayout.VERTICAL); mainLp.setPadding(30, 24, 30, 24);
-        TextView tvMeta = new TextView(this); tvMeta.setText("तारीख: " + o.time + "\nस्टेटस: " + o.status + "\n--------------------"); mainLp.addView(tvMeta);
+        TextView tvMeta = new TextView(this); 
+        tvMeta.setText((isHindi ? "तारीख: " : "Date: ") + o.time + (isHindi ? "\nस्टेटस: " : "\nStatus: ") + o.status + "\n--------------------"); mainLp.addView(tvMeta);
         for (OrderItem item : o.items) {
             TextView tvItem = new TextView(this); String prefix = item.isAdvance ? "[Advance] " : "";
-            tvItem.setText("• " + prefix + item.name + "\n  " + String.format("%.3f", item.qty) + " kg @ ₹" + String.format("%.2f", item.price) + "/kg = ₹" + String.format("%.2f", item.qty * item.price));
+            String itemName = isHindi ? item.name : item.nameEn;
+            tvItem.setText("• " + prefix + itemName + "\n  " + String.format("%.3f", item.qty) + " kg @ ₹" + String.format("%.2f", item.price) + "/kg = ₹" + String.format("%.2f", item.qty * item.price));
             mainLp.addView(tvItem);
         }
-        TextView tvSummary = new TextView(this); tvSummary.setText("--------------------\nकुल योग: ₹" + String.format("%.2f", o.total) + "\nजमा कैश: ₹" + String.format("%.2f", o.received) + "\n🔴 बाकी उधारी: ₹" + String.format("%.2f", o.due));
+        TextView tvSummary = new TextView(this); 
+        tvSummary.setText(isHindi ? 
+                ("--------------------\nकुल योग: ₹" + String.format("%.2f", o.total) + "\nजमा कैश: ₹" + String.format("%.2f", o.received) + "\n🔴 बाकी उधारी: ₹" + String.format("%.2f", o.due)) :
+                ("--------------------\nTotal Bill: ₹" + String.format("%.2f", o.total) + "\nReceived: ₹" + String.format("%.2f", o.received) + "\n🔴 Total Due: ₹" + String.format("%.2f", o.due))
+        );
         tvSummary.setTypeface(null, Typeface.BOLD); mainLp.addView(tvSummary);
-        b.setView(mainLp); b.setPositiveButton("ठीक है", null); b.show();
+        b.setView(mainLp); b.setPositiveButton(isHindi ? "ठीक है" : "Close", null); b.show();
     }
 
     private void showPayUdharDialog(final Order o) {
-        AlertDialog.Builder b = new AlertDialog.Builder(this); b.setTitle("खाता उधारी जमा: " + o.customerName);
+        AlertDialog.Builder b = new AlertDialog.Builder(this); b.setTitle((isHindi ? "खाता उधारी जमा: " : "Clear Udhar Account: ") + o.customerName);
         LinearLayout lp = new LinearLayout(this); lp.setOrientation(LinearLayout.VERTICAL); lp.setPadding(32, 24, 32, 24);
-        TextView tvInfo = new TextView(this); tvInfo.setText("कुल बाकी उधारी राशि: ₹" + String.format("%.2f", o.due)); tvInfo.setTextColor(Color.RED); lp.addView(tvInfo);
-        final EditText etPay = new EditText(this); etPay.setHint("जमा करने वाले रुपये लिखें"); lp.addView(etPay);
+        TextView tvInfo = new TextView(this); tvInfo.setText((isHindi ? "कुल बाकी उधारी राशि: ₹" : "Current Total Due: ₹") + String.format("%.2f", o.due)); tvInfo.setTextColor(Color.RED); lp.addView(tvInfo);
+        final EditText etPay = new EditText(this); etPay.setHint(isHindi ? "जमा करने वाले रुपये लिखें" : "Enter Cash Amount to Pay"); lp.addView(etPay);
         b.setView(lp);
-        b.setPositiveButton("उधारी जमा करें", (dialog, which) -> {
+        b.setPositiveButton(isHindi ? "उधारी जमा करें" : "Pay Money", (dialog, which) -> {
             if (!etPay.getText().toString().isEmpty()) {
                 double pAmt = Double.parseDouble(etPay.getText().toString());
                 if (pAmt <= o.due) { o.received += pAmt; o.due -= pAmt; renderOrdersTab(); }
@@ -637,15 +797,19 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT); lp.setMargins(0, 4, 0, 16); orderCard.setLayoutParams(lp);
             
             TextView tvTime = new TextView(this);
-            String statusColor = o.status.equals("Complete") ? "🟢 Complete" : (o.status.equals("Rejected") ? "❌ Rejected" : "⏳ Pending");
+            String statusColor = o.status.equals("Complete") ? (isHindi ? "🟢 पूरा हुआ" : "🟢 Complete") : (o.status.equals("Rejected") ? (isHindi ? "❌ रिजेक्टेड" : "❌ Rejected") : (isHindi ? "⏳ पेंडिंग" : "⏳ Pending"));
             tvTime.setText("📅 " + o.time + " | " + statusColor); tvTime.setTextSize(12); tvTime.setTextColor(Color.GRAY); orderCard.addView(tvTime);
 
-            TextView tvHeader = new TextView(this); tvHeader.setText("🧾 ग्राहक: " + o.customerName + "\n💰 कुल बिल: ₹" + String.format("%.2f", o.total) + " | प्राप्त: ₹" + String.format("%.2f", o.received) + "\n🔴 बाकी (Due): ₹" + String.format("%.2f", o.due));
+            TextView tvHeader = new TextView(this); 
+            tvHeader.setText(isHindi ? 
+                    ("🧾 ग्राहक: " + o.customerName + "\n💰 कुल बिल: ₹" + String.format("%.2f", o.total) + " | प्राप्त: ₹" + String.format("%.2f", o.received) + "\n🔴 बाकी (Due): ₹" + String.format("%.2f", o.due)) :
+                    ("🧾 Customer: " + o.customerName + "\n💰 Total: ₹" + String.format("%.2f", o.total) + " | Paid: ₹" + String.format("%.2f", o.received) + "\n🔴 Due: ₹" + String.format("%.2f", o.due))
+            );
             tvHeader.setTypeface(null, Typeface.BOLD); tvHeader.setTextColor(Color.BLACK); orderCard.addView(tvHeader);
 
             LinearLayout rowActions = new LinearLayout(this); rowActions.setOrientation(LinearLayout.HORIZONTAL); rowActions.setPadding(0, 12, 0, 0);
 
-            Button btnViewDetails = new Button(this); btnViewDetails.setText("👁️ बिल विवरण"); btnViewDetails.setTextSize(11); btnViewDetails.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFE0E0E0));
+            Button btnViewDetails = new Button(this); btnViewDetails.setText(isHindi ? "👁️ बिल विवरण" : "👁️ View Bill"); btnViewDetails.setTextSize(11); btnViewDetails.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFE0E0E0));
             LinearLayout.LayoutParams lpAct1 = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f); lpAct1.setMargins(0, 0, 6, 0); btnViewDetails.setLayoutParams(lpAct1);
             btnViewDetails.setOnClickListener(v -> showOrderDetailsDialog(o)); rowActions.addView(btnViewDetails);
 
@@ -658,14 +822,14 @@ public class MainActivity extends Activity {
                 btnReject.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
                 btnReject.setOnClickListener(v -> { o.status = "Rejected"; renderOrdersTab(); }); rowActions.addView(btnReject);
             } else if (o.status.equals("Complete") && o.due > 0) {
-                Button btnPayUdhar = new Button(this); btnPayUdhar.setText("💵 उधारी जमा करें"); btnPayUdhar.setTextSize(11); btnPayUdhar.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFF9800)); btnPayUdhar.setTextColor(Color.WHITE);
+                Button btnPayUdhar = new Button(this); btnPayUdhar.setText(isHindi ? "💵 उधारी जमा करें" : "💵 Clear Due"); btnPayUdhar.setTextSize(11); btnPayUdhar.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFF9800)); btnPayUdhar.setTextColor(Color.WHITE);
                 btnPayUdhar.setOnClickListener(v -> showPayUdharDialog(o)); rowActions.addView(btnPayUdhar);
             }
             orderCard.addView(rowActions); dashDynamicContent.addView(orderCard);
         }
 
         if (visibleCount == 0) {
-            TextView empty = new TextView(this); empty.setText("इस फ़िल्टर में कोई ऑर्डर नहीं मिला।"); empty.setPadding(20, 20, 20, 20); dashDynamicContent.addView(empty);
+            TextView empty = new TextView(this); empty.setText(isHindi ? "इस फ़िल्टर में कोई ऑर्डर नहीं मिला।" : "No matching orders found."); empty.setPadding(20, 20, 20, 20); dashDynamicContent.addView(empty);
         }
     }
 
@@ -686,11 +850,20 @@ public class MainActivity extends Activity {
         
         TextView tv = new TextView(this);
         String currentFilterName = spDateFilter.getSelectedItem().toString();
-        tv.setText("📊 क्लोजिंग रिपोर्ट (" + currentFilterName + ")\n\n" +
-                   "📦 फ़िल्टर किए गए कुल ऑर्डर्स: " + filteredCount + "\n" +
-                   "💰 कुल बिक्री (Net Sales): ₹" + String.format("%.2f", totalSales) + "\n" +
-                   "💵 कुल नकद प्राप्त (Cash In Hand): ₹" + String.format("%.2f", totalReceived) + "\n" +
-                   "🔴 मार्केट में बाकी उधारी (Total Due): ₹" + String.format("%.2f", (totalSales - totalReceived)));
+        
+        if (isHindi) {
+            tv.setText("📊 क्लोजिंग रिपोर्ट (" + currentFilterName + ")\n\n" +
+                       "📦 फ़िल्टर किए गए कुल ऑर्डर्स: " + filteredCount + "\n" +
+                       "💰 कुल बिक्री (Net Sales): ₹" + String.format("%.2f", totalSales) + "\n" +
+                       "💵 कुल नकद प्राप्त (Cash In Hand): ₹" + String.format("%.2f", totalReceived) + "\n" +
+                       "🔴 मार्केट में बाकी उधारी (Total Due): ₹" + String.format("%.2f", (totalSales - totalReceived)));
+        } else {
+            tv.setText("📊 Closing Report (" + currentFilterName + ")\n\n" +
+                       "📦 Filtered Total Orders: " + filteredCount + "\n" +
+                       "💰 Net Sales: ₹" + String.format("%.2f", totalSales) + "\n" +
+                       "💵 Cash In Hand: ₹" + String.format("%.2f", totalReceived) + "\n" +
+                       "🔴 Market Total Due: ₹" + String.format("%.2f", (totalSales - totalReceived)));
+        }
         tv.setTextSize(16); tv.setPadding(24, 24, 24, 24); tv.setTypeface(null, Typeface.BOLD);
         dashDynamicContent.addView(tv);
     }
