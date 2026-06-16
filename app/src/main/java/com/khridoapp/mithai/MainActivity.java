@@ -54,18 +54,18 @@ private String tempSelectedImageUri = "";
     }
 
     static class OrderItem {
-        String id, name, nameEn;
-        double qty, price;
-        boolean isAdvance;
-        OrderItem(String id, String name, String nameEn, double qty, double price, boolean isAdvance) {
-            this.id = id;
-            this.name = name;
-            this.nameEn = nameEn;
-            this.qty = qty;
-            this.price = price;
-            this.isAdvance = isAdvance;
-        }
+    String id, name, nameEn;
+    double qty, price;
+    boolean isAdvance;
+    boolean advanceCompleted; // YE ADD KAR
+    OrderItem(String id, String name, String nameEn, double qty, double price, boolean isAdvance) {
+        this.id = id; this.name = name; this.nameEn = nameEn;
+        this.qty = qty; this.price = price;
+        this.isAdvance = isAdvance;
+        this.advanceCompleted = false; // YE ADD KAR
     }
+}
+    
 
     static class Order {
         String id, customerName, time, status;
@@ -937,19 +937,64 @@ private void showOrderDetailDialog(Order o) {
     tvHead.setTypeface(null, Typeface.BOLD);
     layout.addView(tvHead);
 
+    AlertDialog[] dialogRef = {null};
+
     for (OrderItem item : o.items) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams rP = new LinearLayout.LayoutParams(-1, -2);
+        rP.topMargin = 6;
+        row.setLayoutParams(rP);
+
         TextView tv = new TextView(this);
-        tv.setText("  • " + item.name + " × " + item.qty + "kg = ₹" + (int) item.price);
+        tv.setText("  • " + item.name + " × " + item.qty + "kg = ₹" + (int) item.price
+                + (item.isAdvance ? " 📦" : ""));
         tv.setTextSize(13);
-        tv.setTextColor(Color.parseColor("#333333"));
-        LinearLayout.LayoutParams iP = new LinearLayout.LayoutParams(-1, -2);
-        iP.topMargin = 4;
-        tv.setLayoutParams(iP);
-        layout.addView(tv);
+        tv.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+
+        // Advance items RED, completed advance = normal
+        if (item.isAdvance && !item.advanceCompleted) {
+            tv.setTextColor(Color.RED);
+        } else {
+            tv.setTextColor(Color.parseColor("#333333"));
+        }
+        row.addView(tv);
+
+        // Complete button sirf advance items ke liye
+        if (item.isAdvance && !item.advanceCompleted) {
+            Button btnDone = new Button(this);
+            btnDone.setText("✔");
+            btnDone.setTextSize(11);
+            btnDone.setPadding(8, 4, 8, 4);
+            btnDone.setBackgroundColor(Color.parseColor("#4CAF50"));
+            btnDone.setTextColor(Color.WHITE);
+            LinearLayout.LayoutParams bP = new LinearLayout.LayoutParams(-2, -2);
+            btnDone.setLayoutParams(bP);
+
+            btnDone.setOnClickListener(v -> {
+                item.advanceCompleted = true;
+                tv.setTextColor(Color.parseColor("#333333"));
+                btnDone.setVisibility(android.view.View.GONE);
+
+                // Check karo kya saare advance items complete hue
+                boolean allDone = true;
+                for (OrderItem oi : o.items) {
+                    if (oi.isAdvance && !oi.advanceCompleted) { allDone = false; break; }
+                }
+                if (allDone && o.due <= 0) {
+                    o.status = "Completed";
+                }
+                renderOrdersTab();
+                Toast.makeText(this, item.name + " ✅ Complete!", Toast.LENGTH_SHORT).show();
+            });
+            row.addView(btnDone);
+        }
+
+        layout.addView(row);
     }
 
     addDivider(layout);
-
     addDetailRow(layout, "💰 कुल", "₹" + (int) o.total);
     addDetailRow(layout, "✅ मिला", "₹" + (int) o.received);
     addDetailRow(layout, "⚠️ बकाया", "₹" + (int) o.due);
@@ -957,11 +1002,13 @@ private void showOrderDetailDialog(Order o) {
     ScrollView sv = new ScrollView(this);
     sv.addView(layout);
 
-    new AlertDialog.Builder(this)
+    AlertDialog d = new AlertDialog.Builder(this)
         .setTitle("📋 Order — " + o.customerName)
         .setView(sv)
         .setPositiveButton("Close", null)
-        .show();
+        .create();
+    dialogRef[0] = d;
+    d.show();
 }
 
 private void addDetailRow(LinearLayout layout, String label, String value) {
@@ -1310,8 +1357,6 @@ private void showUpdateDueDialog(Order o) {
         // We use a map to hold current qty values (editable by user)
         java.util.LinkedHashMap<String, double[]> editableQty = new java.util.LinkedHashMap<>();
         for (String id : regularCart.keySet()) editableQty.put(id, new double[]{regularCart.get(id)});
-        for (String id : regularCart.keySet()) editableQty.put(id, new double[]{regularCart.get(id)});
-        // YE LINE ADD KAR NEECHE
         for (String id : advanceCart.keySet()) editableQty.put(id, new double[]{advanceCart.get(id)});
         // Total TextView (updated live)
         TextView tvTotal = new TextView(this);
@@ -1552,7 +1597,8 @@ private void showUpdateDueDialog(Order o) {
                 if (pr != null) {
                     double price = pr.price * q;
                     total += price;
-                    items.add(new OrderItem(productId, pr.name, pr.nameEn, q, price, false));
+                    boolean isAdv = advanceCart.containsKey(productId);
+                    items.add(new OrderItem(productId, pr.name, pr.nameEn, q, price, isAdv));
                 }
             }
 
