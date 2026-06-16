@@ -1310,7 +1310,9 @@ private void showUpdateDueDialog(Order o) {
         // We use a map to hold current qty values (editable by user)
         java.util.LinkedHashMap<String, double[]> editableQty = new java.util.LinkedHashMap<>();
         for (String id : regularCart.keySet()) editableQty.put(id, new double[]{regularCart.get(id)});
-
+        for (String id : regularCart.keySet()) editableQty.put(id, new double[]{regularCart.get(id)});
+        // YE LINE ADD KAR NEECHE
+        for (String id : advanceCart.keySet()) editableQty.put(id, new double[]{advanceCart.get(id)});
         // Total TextView (updated live)
         TextView tvTotal = new TextView(this);
         tvTotal.setTextSize(16);
