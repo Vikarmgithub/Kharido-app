@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "407983490573",
+    "project_id": "kharido-mithai-pos",
+    "storage_bucket": "kharido-mithai-pos.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:407983490573:android:ed52ac18de0b19fef47744",
+        "android_client_info": {
+          "package_name": "com.khridoapp.mithai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABdZvHbh06S_0NgYGiAKu1Cpl7Heu_OxU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
