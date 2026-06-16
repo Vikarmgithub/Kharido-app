@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:background="#F4F6F9">
 
-    <!-- Top Business Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -34,7 +33,6 @@
                 android:textSize="12sp" />
         </LinearLayout>
         
-        <!-- Top Settings Icon -->
         <ImageView
             android:id="@+id/btnSettings"
             android:layout_width="40dp"
@@ -45,7 +43,6 @@
             android:contentDescription="Settings" />
     </LinearLayout>
 
-    <!-- Navigation Tabs -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -78,13 +75,11 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Main Content Panel -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <!-- ORDER VIEW -->
         <ScrollView
             android:id="@+id/shopContainer"
             android:layout_width="match_parent"
@@ -98,7 +93,6 @@
                 android:orientation="vertical" />
         </ScrollView>
 
-        <!-- INVENTORY & REPORT VIEW -->
         <ScrollView
             android:id="@+id/dashboardContainer"
             android:layout_width="match_parent"
@@ -121,7 +115,6 @@
                     <Button android:id="@+id/tabAnalytics" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📊 कमाई" android:textSize="12sp" android:backgroundTint="#E0E0E0" android:textColor="#000000"/>
                 </LinearLayout>
 
-                <!-- 🔍 Advanced Search, Filter & Custom Date Container -->
                 <LinearLayout
                     android:id="@+id/filterBarContainer"
                     android:layout_width="match_parent"
@@ -155,14 +148,13 @@
                             android:layout_marginLeft="8dp" />
                     </LinearLayout>
 
-                    <!-- 📅 Custom Date Pickers Row (Visible when Custom is picked) -->
                     <LinearLayout
                         android:id="@+id/customDateRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp"
-                        android:visibility="GONE">
+                        android:visibility="gone">
                         
                         <Button
                             android:id="@+id/btnFromDate"
@@ -197,7 +189,6 @@
             </LinearLayout>
         </ScrollView>
 
-        <!-- Floating Cart Button -->
         <Button
             android:id="@+id/btnFloatingCart"
             android:layout_width="wrap_content"
