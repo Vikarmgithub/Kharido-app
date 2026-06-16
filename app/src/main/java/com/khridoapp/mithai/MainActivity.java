@@ -440,7 +440,6 @@ private String tempSelectedImageUri = "";
     }
 
     private void renderInventoryTab() {
-    private void renderInventoryTab() {
     if (dashDynamicContent == null) return;
     dashDynamicContent.removeAllViews();
 
