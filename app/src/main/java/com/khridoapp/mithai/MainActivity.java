@@ -1407,7 +1407,7 @@ private void showUpdateDueDialog(Order o) {
                 final EditText etQty = new EditText(this);
                 etQty.setHint(isHindi ? "मात्रा" : "Qty");
                 etQty.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-                etQty.setText(String.format("%.3f", editableQty.get(fid)[0]).replaceAll("\.?0+$", ""));
+                etQty.setText(String.format("%.3f", editableQty.get(fid)[0]).replaceAll("\\.?0+$", ""));
                 LinearLayout.LayoutParams qLp2 = new LinearLayout.LayoutParams(0, -2, 1f);
                 qLp2.setMargins(0, 0, 6, 0);
                 etQty.setLayoutParams(qLp2);
@@ -1459,7 +1459,7 @@ private void showUpdateDueDialog(Order o) {
                                 double amt = Double.parseDouble(v);
                                 double q = amt / fp.price;
                                 editableQty.get(fid)[0] = q;
-                                etQty.setText(String.format("%.3f", q).replaceAll("\.?0+$", ""));
+                                etQty.setText(String.format("%.3f", q).replaceAll("\\.?0+$", ""));
                                 calcTotal[0].run();
                             } catch (NumberFormatException ignored) {}
                         } else {
