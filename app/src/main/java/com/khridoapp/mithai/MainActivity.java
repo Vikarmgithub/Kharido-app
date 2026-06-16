@@ -325,8 +325,8 @@ public class MainActivity extends Activity {
     private void showLanguageSettingsDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(isHindi ? "⚙️ सेटिंग (Settings)" : "⚙️ Settings");
-        String[] options = isHindi ? new String[]{"English भाषा", "🔑 लाइसेंस पैनल", "🛠️ की जनरेटर (🔒 Firebase Admin)"} 
-                                   : new String[]{"Switch to Hindi", "License Panel", "Key Generator (🔒 Firebase Admin)"};
+        String[] options = isHindi ? new String[]{"English भाषा", "🔑 लाइसेंस पैनल", "🛠️ एडमिन पैनल (🔒 Firebase Admin)"} 
+                               : new String[]{"Switch to Hindi", "License Panel", "Admin Panel (🔒 Firebase Admin)"};
         
         builder.setItems(options, (dialog, which) -> {
             if (which == 0) { isHindi = !isHindi; updateUI(); }
