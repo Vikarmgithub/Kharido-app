@@ -34,7 +34,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 
 public class MainActivity extends Activity {
 
@@ -53,7 +52,7 @@ public class MainActivity extends Activity {
     private static final String KEY_IS_ACTIVATED = "IsAppFullyActivated";
     
     // ⚠️ अपनी असली एडमिन ईमेल आईडी यहाँ डालें (सिर्फ इसी ईमेल से जनरेटर खुलेगा)
-    private static final String ADMIN_EMAIL = "your_google_email@gmail.com";
+    private static final String ADMIN_EMAIL = "vikarmsrkian6514@gmail.com";
 
     static class Product {
         String id, name, nameEn, imageUriStr; 
@@ -199,7 +198,7 @@ public class MainActivity extends Activity {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < deviceId.length(); i++) {
                 char ch = deviceId.charAt(i);
-                if (Character.isLetterOrDigit(ch)) sb.append((char) (ch + 3)); else sb.append(ch);
+                sb.append((char) (ch + 3));
             }
             String shiftedStr = sb.toString().toUpperCase();
             if (shiftedStr.length() > 2) {
@@ -211,23 +210,71 @@ public class MainActivity extends Activity {
         } catch (Exception e) { return false; }
     }
 
+    // 📱 सुधरा हुआ एक्टिवेशन डायलॉग जिसमें "ID कॉपी करें" बटन वापस जोड़ दिया है
     private void showActivationSystemDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(isHindi ? "🔑 सुरक्षित डिवाइस लाइसेंस एक्टिवेशन" : "🔑 Device Locked Activation");
+        builder.setTitle(isHindi ? "🔑 सुरक्षित डिवाइस लाइसेंस एक्टिवーション" : "🔑 Device Locked Activation");
         builder.setCancelable(false); 
-        LinearLayout layout = new LinearLayout(this); layout.setOrientation(LinearLayout.VERTICAL); layout.setPadding(40, 30, 40, 30);
-        TextView tvMsg = new TextView(this); tvMsg.setText(isHindi ? "यह ऐप लॉक है। नीचे दी गई ID कॉपी करके एडमिन को भेजें:" : "Copy Device ID and send to admin:"); tvMsg.setTextSize(13); layout.addView(tvMsg);
-        TextView tvIdDisplay = new TextView(this); tvIdDisplay.setText("\n🆔 Device ID: " + deviceId); tvIdDisplay.setTextSize(15); tvIdDisplay.setTypeface(null, Typeface.BOLD); tvIdDisplay.setTextColor(Color.RED); tvIdDisplay.setGravity(Gravity.CENTER); layout.addView(tvIdDisplay);
+        
+        LinearLayout layout = new LinearLayout(this); 
+        layout.setOrientation(LinearLayout.VERTICAL); 
+        layout.setPadding(40, 30, 40, 30);
+        
+        TextView tvMsg = new TextView(this); 
+        tvMsg.setText(isHindi ? "यह ऐप लॉक है। नीचे दी गई ID कॉपी करके एडमिन को भेजें:" : "Copy Device ID and send to admin:"); 
+        tvMsg.setTextSize(13); 
+        layout.addView(tvMsg);
+        
+        TextView tvIdDisplay = new TextView(this); 
+        tvIdDisplay.setText("\n🆔 Device ID: " + deviceId + "\n"); 
+        tvIdDisplay.setTextSize(16); 
+        tvIdDisplay.setTypeface(null, Typeface.BOLD); 
+        tvIdDisplay.setTextColor(Color.RED); 
+        tvIdDisplay.setGravity(Gravity.CENTER); 
+        layout.addView(tvIdDisplay);
 
-        final EditText etKeyInput = new EditText(this); etKeyInput.setHint(isHindi ? "लाइसेंस की यहाँ डालें..." : "Enter license key..."); etKeyInput.setGravity(Gravity.CENTER); layout.addView(etKeyInput);
+        // 🔥 "ID कॉपी करें" बटन लॉजिक के साथ
+        Button btnCopyId = new Button(this);
+        btnCopyId.setText(isHindi ? "📋 ID कॉपी करें" : "📋 Copy Device ID");
+        btnCopyId.setBackgroundColor(0xFF03DAC5);
+        btnCopyId.setTextColor(Color.BLACK);
+        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(-2, -2);
+        btnParams.gravity = Gravity.CENTER;
+        btnParams.bottomMargin = 30;
+        btnCopyId.setLayoutParams(btnParams);
+        layout.addView(btnCopyId);
+
+        btnCopyId.setOnClickListener(v -> {
+            android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            android.content.ClipData clip = android.content.ClipData.newPlainText("MithaiDeviceID", deviceId);
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(MainActivity.this, isHindi ? "Device ID कॉपी हो गई! ✅" : "Device ID Copied! ✅", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        final EditText etKeyInput = new EditText(this); 
+        etKeyInput.setHint(isHindi ? "लाइसेंस की यहाँ डालें..." : "Enter license key..."); 
+        etKeyInput.setGravity(Gravity.CENTER); 
+        layout.addView(etKeyInput);
+        
         builder.setView(layout);
+        
         builder.setPositiveButton(isHindi ? "🔓 एक्टिवेट" : "Activate", (dialog, which) -> {
             String enteredKey = etKeyInput.getText().toString().trim().toUpperCase();
             if (checkLicenseKey(enteredKey)) {
-                SharedPreferences.Editor editor = activationPrefs.edit(); editor.putBoolean(KEY_IS_ACTIVATED, true); editor.apply();
-                isAppActivated = true; updateUI();
-            } else { isAppActivated = false; showActivationSystemDialog(); }
+                SharedPreferences.Editor editor = activationPrefs.edit(); 
+                editor.putBoolean(KEY_IS_ACTIVATED, true); 
+                editor.apply();
+                isAppActivated = true; 
+                updateUI();
+            } else { 
+                isAppActivated = false; 
+                Toast.makeText(MainActivity.this, isHindi ? "❌ गलत लाइसेंस की!" : "❌ Invalid Key!", Toast.LENGTH_SHORT).show();
+                showActivationSystemDialog(); 
+            }
         });
+        
         builder.setNegativeButton(isHindi ? "👀 डेमो" : "Demo", (dialog, which) -> isAppActivated = false);
         builder.show();
     }
@@ -236,17 +283,15 @@ public class MainActivity extends Activity {
     private void verifyAdminAndOpenGenerator() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         
-        // अगर पहले से लॉगिन है और ईमेल मैच करता है
         if (currentUser != null && currentUser.getEmail() != null && currentUser.getEmail().equalsIgnoreCase(ADMIN_EMAIL)) {
             Intent intent = new Intent(MainActivity.this, KeyGeneratorActivity.class);
             startActivity(intent);
             return;
         }
 
-        // अगर लॉगिन नहीं है, तो ईमेल-पासवर्ड डायलॉग खोलें
         AlertDialog.Builder b = new AlertDialog.Builder(this);
         b.setTitle("🔐 Firebase Admin Verification");
-        b.setMessage("सुरक्षित रिमोट एक्सेस के लिए अपने Google/Firebase क्रेडेंशियल से लॉगिन करें (Internet Required):");
+        b.setMessage("सुरक्षित रिमोट एक्सेस के लिए अपने क्रेडेंशियल से लॉगिन करें (Internet Required):");
         
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(40, 20, 40, 20);
         final EditText etEmail = new EditText(this); etEmail.setHint("Admin Email"); root.addView(etEmail);
@@ -286,13 +331,13 @@ public class MainActivity extends Activity {
         builder.setItems(options, (dialog, which) -> {
             if (which == 0) { isHindi = !isHindi; updateUI(); }
             else if (which == 1) { showActivationSystemDialog(); }
-            else { verifyAdminAndOpenGenerator(); } // फायरबेस चेकिंग चालू
+            else { verifyAdminAndOpenGenerator(); } 
         });
         builder.show();
     }
 
     private void setupDateFilterSpinner() {
-        String[] filterOptions = isHindi ? new String[]{"सभी ऑर्डर्स", "आज के", "इस महीने के", "📅 कस्टम तारीख"} : new String[]{"All Orders", "Today", "This Month", "📅 Custom Range"};
+        String[] filterOptions = isHindi ? new String[]{"सभी ऑर्डर्स", "आज के", "इस महीने के", "📅 CUSTOM तारीख"} : new String[]{"All Orders", "Today", "This Month", "📅 Custom Range"};
         ArrayAdapter<String> filterAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, filterOptions); spDateFilter.setAdapter(filterAdapter);
     }
 
@@ -320,8 +365,6 @@ public class MainActivity extends Activity {
     private void refreshCurrentReportTab() { if (currentSubTab.equals("Orders")) renderOrdersTab(); else if (currentSubTab.equals("Analytics")) renderAnalyticsTab(); }
     private boolean shouldShowOrder(Order o) { String s = etSearchName.getText().toString().trim().toLowerCase(); if (!s.isEmpty() && !o.customerName.toLowerCase().contains(s)) return false; int p = spDateFilter.getSelectedItemPosition(); if (p == 1 && !o.dateKey.equals(new SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault()).format(new Date()))) return false; if (p == 2 && !o.monthKey.equals(new SimpleDateFormat("MMM-yyyy", Locale.getDefault()).format(new Date()))) return false; if (p == 3 && (o.timestamp < fromTimestamp || o.timestamp > toTimestamp)) return false; return true; }
     private void initSeedProducts() { if (products.isEmpty()) { products.add(new Product("p1", "गुलाब जामुन", "Gulab Jamun", 360, "")); products.add(new Product("p2", "काजू कतली", "Kaju Katli", 820, "")); products.add(new Product("p3", "रसगुल्ला", "Rasgulla", 320, "")); } }
-    private void openGallery() { Intent i = new Intent(Intent.ACTION_PICK); i.setType("image/*"); startActivityForResult(i, PICK_IMAGE_REQUEST); }
-    @Override protected void onActivityResult(int rc, int res, Intent d) { super.onActivityResult(rc, res, d); if (rc == PICK_IMAGE_REQUEST && res == RESULT_OK && d != null && d.getData() != null) { selectedImageUriStr = d.getData().toString(); if (previewImageView != null) { previewImageView.setImageURI(d.getData()); previewImageView.setVisibility(View.VISIBLE); } } }
 
     private void renderShop() {
         shopProductList.removeAllViews();
