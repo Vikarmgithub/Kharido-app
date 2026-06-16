@@ -15,6 +15,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView; // कंपाइल एरर को ठीक करने के लिए इम्पोर्ट
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
@@ -58,7 +59,7 @@ public class MainActivity extends Activity {
         Order(String id, String customerName, ArrayList<OrderItem> items, double total, double received, double due) {
             this.id = id; this.customerName = customerName; this.items = items;
             this.total = total; this.received = received; this.due = due;
-            this.status = "Pending"; // शुरुआत में हमेशा पेंडिंग रहेगा
+            this.status = "Pending"; // डिफ़ॉल्ट हमेशा पेंडिंग
             SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy, hh:mm a", Locale.getDefault());
             this.time = sdf.format(new Date()); 
         }
@@ -627,7 +628,6 @@ public class MainActivity extends Activity {
         b.show();
     }
 
-    // --- 💵 बाद में आई उधारी अपडेट करने का पॉपअप डायलॉग ---
     private void showPayUdharDialog(final Order o) {
         AlertDialog.Builder b = new AlertDialog.Builder(this);
         b.setTitle("खाता उधारी जमा: " + o.customerName);
@@ -653,9 +653,9 @@ public class MainActivity extends Activity {
             if (!str.isEmpty()) {
                 double payAmount = Double.parseDouble(str);
                 if (payAmount <= o.due) {
-                    o.received += payAmount; // प्राप्त कैश बढ़ाया
-                    o.due -= payAmount;     // बाकी उधारी घटाई
-                    renderOrdersTab();       // रिपोर्ट रिफ्रेश की
+                    o.received += payAmount; 
+                    o.due -= payAmount;     
+                    renderOrdersTab();       
                     Toast.makeText(MainActivity.this, "उधारी खाता अपडेट सफल!", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(MainActivity.this, "प्राप्त राशि बाकी उधारी से अधिक नहीं हो सकती!", Toast.LENGTH_LONG).show();
@@ -666,7 +666,6 @@ public class MainActivity extends Activity {
         b.show();
     }
 
-    // --- ऑर्डर्स रिपोर्ट टैब (सुरक्षित लॉक-इन सिस्टम) ---
     private void renderOrdersTab() {
         dashDynamicContent.removeAllViews();
         if (orders.isEmpty()) {
@@ -706,7 +705,6 @@ public class MainActivity extends Activity {
             rowActions.setOrientation(LinearLayout.HORIZONTAL);
             rowActions.setPadding(0, 12, 0, 0);
 
-            // पूरा बिल देखने का बटन हमेशा ऑन रहेगा
             Button btnViewDetails = new Button(this);
             btnViewDetails.setText("👁️ बिल विवरण");
             btnViewDetails.setTextSize(11);
@@ -719,7 +717,6 @@ public class MainActivity extends Activity {
 
             // 🔥 एडवांस्ड लॉकिंग और उधारी एडिटिंग सिस्टम
             if (o.status.equals("Pending")) {
-                // अगर पेंडिंग है तो ही Complete या Reject करने का ऑप्शन मिलेगा
                 Button btnComplete = new Button(this);
                 btnComplete.setText("Complete");
                 btnComplete.setTextSize(11);
@@ -729,7 +726,7 @@ public class MainActivity extends Activity {
                 lpC.setMargins(0, 0, 6, 0);
                 btnComplete.setLayoutParams(lpC);
                 btnComplete.setOnClickListener(v -> {
-                    o.status = "Complete"; // हमेशा के लिए लॉक
+                    o.status = "Complete"; // लॉक रूल चालू
                     renderOrdersTab();
                     Toast.makeText(MainActivity.this, "ऑर्डर पक्का हो गया! 🟢", Toast.LENGTH_SHORT).show();
                 });
@@ -742,14 +739,14 @@ public class MainActivity extends Activity {
                 btnReject.setTextColor(Color.WHITE);
                 btnReject.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
                 btnReject.setOnClickListener(v -> {
-                    o.status = "Rejected"; // हमेशा के लिए लॉक
+                    o.status = "Rejected"; // लॉक रूल चालू
                     renderOrdersTab();
                     Toast.makeText(MainActivity.this, "ऑर्डर रिजेक्ट कर दिया गया! ❌", Toast.LENGTH_SHORT).show();
                 });
                 rowActions.addView(btnReject);
 
             } else if (o.status.equals("Complete") && o.due > 0) {
-                // अगर ऑर्डर कंप्लीट है लेकिन ग्राहक के पैसे बाकी हैं, तो "उधारी जमा करें" का बटन चालू रहेगा
+                // सिर्फ 'Complete' उधारी बिलों के लिए ही बटन हमेशा खुला रहेगा
                 Button btnPayUdhar = new Button(this);
                 btnPayUdhar.setText("💵 उधारी जमा करें");
                 btnPayUdhar.setTextSize(11);
@@ -769,7 +766,7 @@ public class MainActivity extends Activity {
         dashDynamicContent.removeAllViews();
         double totalSales = 0, totalReceived = 0;
         for (Order o : orders) { 
-            if (!o.status.equals("Rejected")) { // रिजेक्टेड ऑर्डर्स को कमाई में नहीं जोड़ेंगे
+            if (!o.status.equals("Rejected")) { 
                 totalSales += o.total; 
                 totalReceived += o.received; 
             }
