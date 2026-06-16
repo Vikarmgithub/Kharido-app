@@ -1062,22 +1062,54 @@ private void showUpdateDueDialog(Order o) {
     etPay.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
     layout.addView(etPay);
 
+    TextView tvDiscLabel = new TextView(this);
+    tvDiscLabel.setText("🏷️ छूट (₹):");
+    tvDiscLabel.setTextSize(13);
+    tvDiscLabel.setTextColor(Color.parseColor("#555555"));
+    LinearLayout.LayoutParams discLabelLp = new LinearLayout.LayoutParams(-1, -2);
+    discLabelLp.setMargins(0, 16, 0, 0);
+    tvDiscLabel.setLayoutParams(discLabelLp);
+    layout.addView(tvDiscLabel);
+
+    EditText etDiscount = new EditText(this);
+    etDiscount.setHint("छूट दर्ज करें (अगर कोई हो)");
+    etDiscount.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+    layout.addView(etDiscount);
+
     new AlertDialog.Builder(this)
         .setTitle("💰 उधार Update — " + o.customerName)
         .setMessage("बाकी बकाया: ₹" + (int) o.due)
         .setView(layout)
         .setPositiveButton("💾 Update", (d, w) -> {
             String s = etPay.getText().toString().trim();
-            if (s.isEmpty()) return;
-            double payment = Math.min(Double.parseDouble(s), o.due);
+            double payment = 0;
+            try { payment = Double.parseDouble(s); } catch (NumberFormatException e) { payment = 0; }
+
+            double discountGiven = 0;
+            String ds = etDiscount.getText().toString().trim();
+            try { discountGiven = Double.parseDouble(ds); } catch (NumberFormatException e) { discountGiven = 0; }
+
+            if (payment <= 0 && discountGiven <= 0) return;
+
+            // discount portion can't exceed what's actually due-able; cap proportionally
+            if (payment + discountGiven > o.due) {
+                discountGiven = Math.max(0, o.due - payment);
+                if (discountGiven < 0) { payment = o.due; discountGiven = 0; }
+            }
+
             o.received += payment;
-            o.due -= payment;
+            o.discount += discountGiven;
+            o.due -= (payment + discountGiven);
+
             if (o.due <= 0) {
                 o.due = 0;
                 o.status = "Completed";
                 Toast.makeText(this, "🎉 पूरा उधार Clear!", Toast.LENGTH_LONG).show();
             } else {
-                Toast.makeText(this, "✅ ₹" + (int) payment + " मिले, बकाया: ₹" + (int) o.due, Toast.LENGTH_SHORT).show();
+                String msg = "✅ ₹" + (int) payment + " मिले";
+                if (discountGiven > 0) msg += ", 🏷️ छूट ₹" + (int) discountGiven;
+                msg += ", बकाया: ₹" + (int) o.due;
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
             }
             renderOrdersTab();
         })
