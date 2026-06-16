@@ -146,6 +146,98 @@ public class MainActivity extends Activity {
         if (btnSettings != null) {
             btnSettings.setOnClickListener(v -> showLanguageSettingsDialog());
         }
+        
+        // Main Navigation Listeners
+        if (btnShopView != null) {
+            btnShopView.setOnClickListener(v -> {
+                if (shopContainer != null) shopContainer.setVisibility(View.VISIBLE);
+                if (dashboardContainer != null) dashboardContainer.setVisibility(View.GONE);
+                btnShopView.setBackgroundColor(Color.parseColor("#6200EE"));
+                btnShopView.setTextColor(Color.WHITE);
+                btnDashView.setBackgroundColor(Color.WHITE);
+                btnDashView.setTextColor(Color.parseColor("#6200EE"));
+            });
+        }
+        
+        if (btnDashView != null) {
+            btnDashView.setOnClickListener(v -> {
+                if (shopContainer != null) shopContainer.setVisibility(View.GONE);
+                if (dashboardContainer != null) dashboardContainer.setVisibility(View.VISIBLE);
+                btnDashView.setBackgroundColor(Color.parseColor("#6200EE"));
+                btnDashView.setTextColor(Color.WHITE);
+                btnShopView.setBackgroundColor(Color.WHITE);
+                btnShopView.setTextColor(Color.parseColor("#6200EE"));
+            });
+        }
+        
+        if (btnFloatingCart != null) {
+            btnFloatingCart.setOnClickListener(v -> showCartDialog());
+        }
+        
+        // Dashboard Tab Listeners
+        if (tabInventory != null) {
+            tabInventory.setOnClickListener(v -> {
+                currentSubTab = "Inventory";
+                switchSubTab(tabInventory);
+                renderInventoryTab();
+            });
+        }
+        
+        if (tabOrders != null) {
+            tabOrders.setOnClickListener(v -> {
+                currentSubTab = "Orders";
+                switchSubTab(tabOrders);
+                renderOrdersTab();
+            });
+        }
+        
+        if (tabAnalytics != null) {
+            tabAnalytics.setOnClickListener(v -> {
+                currentSubTab = "Analytics";
+                switchSubTab(tabAnalytics);
+                renderAnalyticsTab();
+            });
+        }
+        
+        if (btnFromDate != null) {
+            btnFromDate.setOnClickListener(v -> showDatePicker(true));
+        }
+        
+        if (btnToDate != null) {
+            btnToDate.setOnClickListener(v -> showDatePicker(false));
+        }
+        
+        if (etSearchName != null) {
+            etSearchName.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    refreshCurrentReportTab();
+                }
+                
+                @Override
+                public void afterTextChanged(Editable s) {}
+            });
+        }
+        
+        if (spDateFilter != null) {
+            spDateFilter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (position == 3 && customDateRow != null) {
+                        customDateRow.setVisibility(View.VISIBLE);
+                    } else if (customDateRow != null) {
+                        customDateRow.setVisibility(View.GONE);
+                    }
+                    refreshCurrentReportTab();
+                }
+                
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        }
 
         setupDateFilterSpinner();
         initSeedProducts();
@@ -423,12 +515,94 @@ public class MainActivity extends Activity {
     private void renderShop() {
         if (shopProductList == null) return;
         shopProductList.removeAllViews();
+        
         for (final Product p : products) {
-            LinearLayout card = new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2); cp.setMargins(0, 6, 0, 16); card.setLayoutParams(cp); card.setBackgroundColor(Color.WHITE); card.setPadding(24, 24, 24, 24); card.setElevation(3f);
-            LinearLayout hr = new LinearLayout(this); ImageView iv = new ImageView(this); iv.setLayoutParams(new LinearLayout.LayoutParams(120, 120)); if (!p.imageUriStr.isEmpty()) iv.setImageURI(Uri.parse(p.imageUriStr)); else iv.setImageResource(android.R.drawable.ic_menu_gallery); hr.addView(iv);
-            LinearLayout nc = new LinearLayout(this); nc.setOrientation(LinearLayout.VERTICAL); TextView tn = new TextView(this); tn.setText(isHindi ? p.name : p.nameEn); tn.setTextSize(18); tn.setTypeface(null, Typeface.BOLD); nc.addView(tn); hr.addView(nc); card.addView(hr);
-            LinearLayout ic = new LinearLayout(this); final EditText ek = new EditText(this); ek.setHint("0.00"); ek.setInputType(8194); ic.addView(ek); final EditText er = new EditText(this); er.setHint("₹"); er.setInputType(8194); ic.addView(er); card.addView(ic);
-            LinearLayout ar = new LinearLayout(this); Button br = new Button(this); br.setText("🛒 काउंटर"); br.setOnClickListener(v -> { if(!ek.getText().toString().isEmpty()) { regularCart.put(p.id, Double.parseDouble(ek.getText().toString())); updateCartButton(); ek.setText(""); er.setText(""); } }); ar.addView(br); card.addView(ar); shopProductList.addView(card);
+            // Product Card - Container
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
+            cardParams.setMargins(0, 6, 0, 16);
+            card.setLayoutParams(cardParams);
+            card.setBackgroundColor(Color.WHITE);
+            card.setPadding(24, 24, 24, 24);
+            card.setElevation(3f);
+            
+            // Header Row - Image + Name
+            LinearLayout headerRow = new LinearLayout(this);
+            headerRow.setOrientation(LinearLayout.HORIZONTAL);
+            headerRow.setGravity(Gravity.CENTER_VERTICAL);
+            
+            // Image
+            ImageView imageView = new ImageView(this);
+            LinearLayout.LayoutParams imgParams = new LinearLayout.LayoutParams(120, 120);
+            imgParams.setMargins(0, 0, 16, 0);
+            imageView.setLayoutParams(imgParams);
+            if (!p.imageUriStr.isEmpty()) {
+                imageView.setImageURI(Uri.parse(p.imageUriStr));
+            } else {
+                imageView.setImageResource(android.R.drawable.ic_menu_gallery);
+            }
+            headerRow.addView(imageView);
+            
+            // Name Container
+            LinearLayout nameContainer = new LinearLayout(this);
+            nameContainer.setOrientation(LinearLayout.VERTICAL);
+            nameContainer.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+            
+            TextView productName = new TextView(this);
+            productName.setText(isHindi ? p.name : p.nameEn);
+            productName.setTextSize(18);
+            productName.setTypeface(null, Typeface.BOLD);
+            productName.setTextColor(Color.BLACK);
+            nameContainer.addView(productName);
+            
+            TextView priceText = new TextView(this);
+            priceText.setText("Price: ₹" + p.price);
+            priceText.setTextSize(14);
+            priceText.setTextColor(Color.parseColor("#666666"));
+            nameContainer.addView(priceText);
+            
+            headerRow.addView(nameContainer);
+            card.addView(headerRow);
+            
+            // Input Row - Quantity
+            LinearLayout inputRow = new LinearLayout(this);
+            inputRow.setOrientation(LinearLayout.HORIZONTAL);
+            inputRow.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(0, -2, 1f);
+            inputParams.setMargins(0, 16, 8, 0);
+            
+            final EditText quantityInput = new EditText(this);
+            quantityInput.setHint("Qty (kg/pcs)");
+            quantityInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            quantityInput.setLayoutParams(inputParams);
+            inputRow.addView(quantityInput);
+            
+            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(0, -2, 1f);
+            btnParams.setMargins(8, 16, 0, 0);
+            Button addBtn = new Button(this);
+            addBtn.setText("🛒 Add");
+            addBtn.setLayoutParams(btnParams);
+            addBtn.setOnClickListener(v -> {
+                String qtyStr = quantityInput.getText().toString().trim();
+                if (!qtyStr.isEmpty()) {
+                    try {
+                        double qty = Double.parseDouble(qtyStr);
+                        regularCart.put(p.id, qty);
+                        updateCartButton();
+                        quantityInput.setText("");
+                        Toast.makeText(MainActivity.this, p.name + " added to cart!", Toast.LENGTH_SHORT).show();
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(MainActivity.this, "Invalid quantity!", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(MainActivity.this, "Enter quantity!", Toast.LENGTH_SHORT).show();
+                }
+            });
+            inputRow.addView(addBtn);
+            card.addView(inputRow);
+            
+            shopProductList.addView(card);
         }
     }
 
