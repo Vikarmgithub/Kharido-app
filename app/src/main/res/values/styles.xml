@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="android:Theme.Material.Light.DarkActionBar">
-        <item name="android:colorPrimary">#6200EE</item>
-        <item name="android:colorPrimaryDark">#3700B3</item>
-        <item name="android:colorAccent">#03DAC5</item>
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoTitleBar">
+        <item name="android:colorPrimary">#4F46E5</item>
+        <item name="android:colorPrimaryDark">#1E1B4B</item>
+        <item name="android:colorAccent">#F59E0B</item>
+        <item name="android:windowBackground">#F1F5F9</item>
+        <item name="android:statusBarColor">#1E1B4B</item>
     </style>
 </resources>
