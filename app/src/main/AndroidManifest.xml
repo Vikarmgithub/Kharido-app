@@ -2,13 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.khridoapp.mithai">
 
- <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
- <application
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
         android:allowBackup="true"
+        android:icon="@android:drawable/sym_def_app_icon"
         android:label="श्री मिष्ठान भंडार"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
-        
+        android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+
         <activity android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
@@ -16,5 +18,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity 
+            android:name=".KeyGeneratorActivity"
+            android:screenOrientation="portrait"
+            android:exported="false" />
+
     </application>
+
 </manifest>
