@@ -27,7 +27,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -37,144 +36,207 @@ import java.util.Locale;
 
 public class MainActivity extends Activity {
 
-    private static final int PICK_IMAGE_REQUEST = 100;
-    private static String selectedImageUriStr = ""; 
-    private static ImageView previewImageView; 
-
-    private boolean isHindi = true; 
-    
-    // लाइसेंस और फायरबेस ऑथ वेरिएबल्स
-    private boolean isAppActivated = false;
-    private String deviceId = "";
-    private SharedPreferences activationPrefs;
-    private FirebaseAuth mAuth;
-    private static final String PREFS_NAME = "MithaiDeviceLockPrefs";
-    private static final String KEY_IS_ACTIVATED = "IsAppFullyActivated";
-    
-    // ⚠️ अपनी असली ईमेल यहाँ डालें भाई
-    private static final String ADMIN_EMAIL = "vikarmsrkian6514@gmail.com";
-
+    // ==================== DATA CLASSES ====================
     static class Product {
-        String id, name, nameEn, imageUriStr; 
+        String id, name, nameEn, imageUriStr;
         double price;
         Product(String id, String name, String nameEn, double price, String imageUriStr) {
-            this.id = id; this.name = name; this.nameEn = nameEn; this.price = price; this.imageUriStr = imageUriStr;
+            this.id = id;
+            this.name = name;
+            this.nameEn = nameEn;
+            this.price = price;
+            this.imageUriStr = imageUriStr;
         }
     }
 
     static class OrderItem {
         String id, name, nameEn;
-        double qty, price; 
+        double qty, price;
         boolean isAdvance;
         OrderItem(String id, String name, String nameEn, double qty, double price, boolean isAdvance) {
-            this.id = id; this.name = name; this.nameEn = nameEn; this.qty = qty; this.price = price;
+            this.id = id;
+            this.name = name;
+            this.nameEn = nameEn;
+            this.qty = qty;
+            this.price = price;
             this.isAdvance = isAdvance;
         }
     }
 
     static class Order {
-        String id, customerName, time, status; 
-        String dateKey, monthKey; 
-        long timestamp; 
+        String id, customerName, time, status;
+        String dateKey, monthKey;
+        long timestamp;
         ArrayList<OrderItem> items;
         double total, received, due;
+
         Order(String id, String customerName, ArrayList<OrderItem> items, double total, double received, double due) {
-            this.id = id; this.customerName = customerName; this.items = items;
-            this.total = total; this.received = received; this.due = due;
-            this.status = "Pending"; 
+            this.id = id;
+            this.customerName = customerName;
+            this.items = items;
+            this.total = total;
+            this.received = received;
+            this.due = due;
+            this.status = "Pending";
             Date currentDate = new Date();
-            this.timestamp = currentDate.getTime(); 
+            this.timestamp = currentDate.getTime();
             SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy, hh:mm a", Locale.getDefault());
-            this.time = sdf.format(currentDate); 
+            this.time = sdf.format(currentDate);
             this.dateKey = new SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault()).format(currentDate);
             this.monthKey = new SimpleDateFormat("MMM-yyyy", Locale.getDefault()).format(currentDate);
         }
     }
 
+    // ==================== UI ELEMENTS ====================
+    private ScrollView shopContainer, dashboardContainer;
+    private LinearLayout shopProductList, dashDynamicContent, filterBarContainer, customDateRow;
+    private Button btnShopView, btnDashView, btnFloatingCart, btnFromDate, btnToDate;
+    private Button tabInventory, tabOrders, tabAnalytics;
+    private ImageView btnSettings;
+    private EditText etSearchName;
+    private Spinner spDateFilter;
+
+    // ==================== DATA & STATE ====================
     private ArrayList<Product> products = new ArrayList<>();
     private ArrayList<Order> orders = new ArrayList<>();
     private HashMap<String, Double> regularCart = new HashMap<>();
     private HashMap<String, Double> advanceCart = new HashMap<>();
 
-    private ScrollView shopContainer, dashboardContainer;
-    private LinearLayout shopProductList, dashDynamicContent, filterBarContainer, customDateRow;
-    private Button btnShopView, btnDashView, btnFloatingCart, btnFromDate, btnToDate;
-    private Button tabInventory, tabOrders, tabAnalytics;
-    private ImageView btnSettings; 
-    private EditText etSearchName;
-    private Spinner spDateFilter;
     private String currentSubTab = "Inventory";
     private long fromTimestamp = 0;
     private long toTimestamp = Long.MAX_VALUE;
+    private boolean isHindi = true;
 
+    // Firebase & Activation
+    private FirebaseAuth mAuth;
+    private boolean isAppActivated = false;
+    private String deviceId = "";
+    private SharedPreferences activationPrefs;
+    private static final String PREFS_NAME = "MithaiDeviceLockPrefs";
+    private static final String KEY_IS_ACTIVATED = "IsAppFullyActivated";
+    private static final String ADMIN_EMAIL = "vikarmsrkian6514@gmail.com";
+
+    // ==================== LIFECYCLE ====================
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 🎨 यह आपके असली सुंदर XML लेआउट को लोड करेगा
         setContentView(R.layout.activity_main);
 
+        // Initialize Firebase
         mAuth = FirebaseAuth.getInstance();
 
+        // Get Device ID
         try {
             deviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
             if (deviceId == null || deviceId.isEmpty()) deviceId = "MITHAIPOS404";
-        } catch (Exception e) { deviceId = "MITHAIPOS999"; }
+        } catch (Exception e) {
+            deviceId = "MITHAIPOS999";
+        }
 
+        // Check Activation Status
         activationPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         isAppActivated = activationPrefs.getBoolean(KEY_IS_ACTIVATED, false);
 
-        // XML की ओरिजिनल IDs को जावा से दोबारा सही तरीके से जोड़ना
+        // Initialize UI
+        initializeViews();
+        setupListeners();
+        initSeedProducts();
+        updateUI();
+
+        // Show Activation if needed
+        if (!isAppActivated) {
+            showActivationSystemDialog();
+        }
+    }
+
+    // ==================== INITIALIZATION ====================
+    private void initializeViews() {
+        // Containers
         shopContainer = findViewById(R.id.shopContainer);
         dashboardContainer = findViewById(R.id.dashboardContainer);
         shopProductList = findViewById(R.id.shopProductList);
         dashDynamicContent = findViewById(R.id.dashDynamicContent);
         filterBarContainer = findViewById(R.id.filterBarContainer);
         customDateRow = findViewById(R.id.customDateRow);
-        
+
+        // Main Navigation Buttons
         btnShopView = findViewById(R.id.btnShopView);
         btnDashView = findViewById(R.id.btnDashView);
         btnFloatingCart = findViewById(R.id.btnFloatingCart);
-        btnFromDate = findViewById(R.id.btnFromDate);
-        btnToDate = findViewById(R.id.btnToDate);
+
+        // Dashboard Tabs
         tabInventory = findViewById(R.id.tabInventory);
         tabOrders = findViewById(R.id.tabOrders);
         tabAnalytics = findViewById(R.id.tabAnalytics);
+
+        // Filter Elements
         etSearchName = findViewById(R.id.etSearchName);
         spDateFilter = findViewById(R.id.spDateFilter);
+        btnFromDate = findViewById(R.id.btnFromDate);
+        btnToDate = findViewById(R.id.btnToDate);
+
+        // Settings
         btnSettings = findViewById(R.id.btnSettings);
-        
+
+        // Setup Date Filter Spinner
+        setupDateFilterSpinner();
+    }
+
+    private void setupListeners() {
+        // Settings Button
         if (btnSettings != null) {
             btnSettings.setOnClickListener(v -> showLanguageSettingsDialog());
         }
-        
-        // Main Navigation Listeners
+
+        // ==================== MAIN NAVIGATION ====================
         if (btnShopView != null) {
             btnShopView.setOnClickListener(v -> {
-                if (shopContainer != null) shopContainer.setVisibility(View.VISIBLE);
-                if (dashboardContainer != null) dashboardContainer.setVisibility(View.GONE);
+                // Show Shop, Hide Dashboard
+                shopContainer.setVisibility(View.VISIBLE);
+                dashboardContainer.setVisibility(View.GONE);
+
+                // Update Button Colors
                 btnShopView.setBackgroundColor(Color.parseColor("#6200EE"));
                 btnShopView.setTextColor(Color.WHITE);
                 btnDashView.setBackgroundColor(Color.WHITE);
                 btnDashView.setTextColor(Color.parseColor("#6200EE"));
+
+                // Refresh Shop
+                renderShop();
             });
         }
-        
+
         if (btnDashView != null) {
             btnDashView.setOnClickListener(v -> {
-                if (shopContainer != null) shopContainer.setVisibility(View.GONE);
-                if (dashboardContainer != null) dashboardContainer.setVisibility(View.VISIBLE);
+                // Show Dashboard, Hide Shop
+                shopContainer.setVisibility(View.GONE);
+                dashboardContainer.setVisibility(View.VISIBLE);
+
+                // Update Button Colors
                 btnDashView.setBackgroundColor(Color.parseColor("#6200EE"));
                 btnDashView.setTextColor(Color.WHITE);
                 btnShopView.setBackgroundColor(Color.WHITE);
                 btnShopView.setTextColor(Color.parseColor("#6200EE"));
+
+                // Show Inventory by default
+                if (currentSubTab.equals("Inventory")) {
+                    renderInventoryTab();
+                }
             });
         }
-        
+
+        // ==================== CART BUTTON ====================
         if (btnFloatingCart != null) {
-            btnFloatingCart.setOnClickListener(v -> showCartDialog());
+            btnFloatingCart.setOnClickListener(v -> {
+                if (!isAppActivated) {
+                    showActivationSystemDialog();
+                    return;
+                }
+                showCartDialog();
+            });
         }
-        
-        // Dashboard Tab Listeners
+
+        // ==================== DASHBOARD TABS ====================
         if (tabInventory != null) {
             tabInventory.setOnClickListener(v -> {
                 currentSubTab = "Inventory";
@@ -182,7 +244,7 @@ public class MainActivity extends Activity {
                 renderInventoryTab();
             });
         }
-        
+
         if (tabOrders != null) {
             tabOrders.setOnClickListener(v -> {
                 currentSubTab = "Orders";
@@ -190,7 +252,7 @@ public class MainActivity extends Activity {
                 renderOrdersTab();
             });
         }
-        
+
         if (tabAnalytics != null) {
             tabAnalytics.setOnClickListener(v -> {
                 currentSubTab = "Analytics";
@@ -198,445 +260,586 @@ public class MainActivity extends Activity {
                 renderAnalyticsTab();
             });
         }
-        
+
+        // ==================== DATE BUTTONS ====================
         if (btnFromDate != null) {
             btnFromDate.setOnClickListener(v -> showDatePicker(true));
         }
-        
+
         if (btnToDate != null) {
             btnToDate.setOnClickListener(v -> showDatePicker(false));
         }
-        
+
+        // ==================== SEARCH FILTER ====================
         if (etSearchName != null) {
             etSearchName.addTextChangedListener(new TextWatcher() {
                 @Override
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                
+
                 @Override
                 public void onTextChanged(CharSequence s, int start, int before, int count) {
                     refreshCurrentReportTab();
                 }
-                
+
                 @Override
                 public void afterTextChanged(Editable s) {}
             });
         }
-        
+
+        // ==================== DATE FILTER SPINNER ====================
         if (spDateFilter != null) {
             spDateFilter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    if (position == 3 && customDateRow != null) {
-                        customDateRow.setVisibility(View.VISIBLE);
-                    } else if (customDateRow != null) {
-                        customDateRow.setVisibility(View.GONE);
+                    // Show custom date range for position 3 (Custom)
+                    if (customDateRow != null) {
+                        customDateRow.setVisibility(position == 3 ? View.VISIBLE : View.GONE);
                     }
                     refreshCurrentReportTab();
                 }
-                
+
                 @Override
                 public void onNothingSelected(AdapterView<?> parent) {}
             });
         }
-
-        setupDateFilterSpinner();
-        initSeedProducts();
-        updateUI(); 
-
-        if (!isAppActivated) {
-            showActivationSystemDialog();
-        }
-
-        btnShopView.setOnClickListener(v -> {
-            shopContainer.setVisibility(View.VISIBLE); dashboardContainer.setVisibility(View.GONE); filterBarContainer.setVisibility(View.GONE);
-            btnShopView.setBackgroundColor(0xFF6200EE); btnShopView.setTextColor(Color.WHITE); btnDashView.setBackgroundColor(Color.WHITE); btnDashView.setTextColor(0xFF6200EE);
-            renderShop();
-        });
-
-        btnDashView.setOnClickListener(v -> {
-            shopContainer.setVisibility(View.GONE); dashboardContainer.setVisibility(View.VISIBLE);
-            btnDashView.setBackgroundColor(0xFF6200EE); btnDashView.setTextColor(Color.WHITE); btnShopView.setBackgroundColor(Color.WHITE); btnShopView.setTextColor(0xFF6200EE);
-            switchSubTab(tabInventory); renderInventoryTab();
-        });
-
-        tabInventory.setOnClickListener(v -> { currentSubTab = "Inventory"; switchSubTab(tabInventory); renderInventoryTab(); });
-        tabOrders.setOnClickListener(v -> { currentSubTab = "Orders"; switchSubTab(tabOrders); renderOrdersTab(); });
-        tabAnalytics.setOnClickListener(v -> { currentSubTab = "Analytics"; switchSubTab(tabAnalytics); renderAnalyticsTab(); });
-        
-        if (etSearchName != null) {
-            etSearchName.addTextChangedListener(new TextWatcher() {
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                public void onTextChanged(CharSequence s, int start, int before, int count) {}
-                public void afterTextChanged(Editable s) { refreshCurrentReportTab(); }
-            });
-        }
-
-        if (spDateFilter != null) {
-            spDateFilter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    if (position == 3) {
-                        if (customDateRow != null) customDateRow.setVisibility(View.VISIBLE);
-                    } else {
-                        if (customDateRow != null) customDateRow.setVisibility(View.GONE);
-                        fromTimestamp = 0; toTimestamp = Long.MAX_VALUE;
-                    }
-                    refreshCurrentReportTab();
-                }
-                @Override
-                public void onNothingSelected(AdapterView<?> parent) {}
-            });
-        }
-
-        if (btnFromDate != null) btnFromDate.setOnClickListener(v -> showDatePicker(true));
-        if (btnToDate != null) btnToDate.setOnClickListener(v -> showDatePicker(false));
-        if (btnFloatingCart != null) btnFloatingCart.setOnClickListener(v -> showCartDialog());
     }
 
-    private boolean checkLicenseKey(String inputKey) {
-        if (inputKey == null || inputKey.isEmpty() || !inputKey.startsWith("MITHAI-")) return false;
-        try {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < deviceId.length(); i++) {
-                char ch = deviceId.charAt(i);
-                sb.append((char) (ch + 3));
-            }
-            String shiftedStr = sb.toString().toUpperCase();
-            if (shiftedStr.length() > 2) {
-                char first = shiftedStr.charAt(0); char last = shiftedStr.charAt(shiftedStr.length() - 1);
-                shiftedStr = last + shiftedStr.substring(1, shiftedStr.length() - 1) + first;
-            }
-            String correctCalculatedKey = "MITHAI-" + shiftedStr + "-" + (deviceId.length() * 7) + "-893";
-            return inputKey.equals(correctCalculatedKey);
-        } catch (Exception e) { return false; }
-    }
-
-    private void showActivationSystemDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(isHindi ? "🔑 सुरक्षित डिवाइस लाइसेंस एक्टिवेशन" : "🔑 Device Locked Activation");
-        builder.setCancelable(false); 
-        
-        LinearLayout layout = new LinearLayout(this); 
-        layout.setOrientation(LinearLayout.VERTICAL); 
-        layout.setPadding(40, 30, 40, 30);
-        
-        TextView tvMsg = new TextView(this); 
-        tvMsg.setText(isHindi ? "यह ऐप लॉक है। नीचे दी गई ID कॉपी करके एडमिन को भेजें:" : "Copy Device ID and send to admin:"); 
-        tvMsg.setTextSize(13); 
-        layout.addView(tvMsg);
-        
-        TextView tvIdDisplay = new TextView(this); 
-        tvIdDisplay.setText("\n🆔 Device ID: " + deviceId + "\n"); 
-        tvIdDisplay.setTextSize(16); 
-        tvIdDisplay.setTypeface(null, Typeface.BOLD); 
-        tvIdDisplay.setTextColor(Color.RED); 
-        tvIdDisplay.setGravity(Gravity.CENTER); 
-        layout.addView(tvIdDisplay);
-
-        Button btnCopyId = new Button(this);
-        btnCopyId.setText(isHindi ? "📋 ID कॉपी करें" : "📋 Copy Device ID");
-        btnCopyId.setBackgroundColor(0xFF03DAC5);
-        btnCopyId.setTextColor(Color.BLACK);
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(-2, -2);
-        btnParams.gravity = Gravity.CENTER;
-        btnParams.bottomMargin = 30;
-        btnCopyId.setLayoutParams(btnParams);
-        layout.addView(btnCopyId);
-
-        btnCopyId.setOnClickListener(v -> {
-            android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-            android.content.ClipData clip = android.content.ClipData.newPlainText("MithaiDeviceID", deviceId);
-            if (clipboard != null) {
-                clipboard.setPrimaryClip(clip);
-                Toast.makeText(MainActivity.this, isHindi ? "Device ID कॉपी हो गई! ✅" : "Device ID Copied! ✅", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        final EditText etKeyInput = new EditText(this); 
-        etKeyInput.setHint(isHindi ? "लाइसेंस की यहाँ डालें..." : "Enter license key..."); 
-        etKeyInput.setGravity(Gravity.CENTER); 
-        layout.addView(etKeyInput);
-        
-        builder.setView(layout);
-        
-        builder.setPositiveButton(isHindi ? "🔓 एक्टिवेट" : "Activate", (dialog, which) -> {
-            String enteredKey = etKeyInput.getText().toString().trim().toUpperCase();
-            if (checkLicenseKey(enteredKey)) {
-                SharedPreferences.Editor editor = activationPrefs.edit(); 
-                editor.putBoolean(KEY_IS_ACTIVATED, true); 
-                editor.apply();
-                isAppActivated = true; 
-                updateUI();
-            } else { 
-                isAppActivated = false; 
-                Toast.makeText(MainActivity.this, isHindi ? "❌ गलत लाइसेंस की!" : "❌ Invalid Key!", Toast.LENGTH_SHORT).show();
-                showActivationSystemDialog(); 
-            }
-        });
-        
-        builder.setNegativeButton(isHindi ? "👀 डेमो" : "Demo", (dialog, which) -> isAppActivated = false);
-        builder.show();
-    }
-
-    private void verifyAdminAndOpenGenerator() {
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        
-        if (currentUser != null && currentUser.getEmail() != null && currentUser.getEmail().equalsIgnoreCase(ADMIN_EMAIL)) {
-            Intent intent = new Intent(MainActivity.this, KeyGeneratorActivity.class);
-            startActivity(intent);
-            return;
-        }
-
-        AlertDialog.Builder b = new AlertDialog.Builder(this);
-        b.setTitle("🔐 Firebase Admin Verification");
-        b.setMessage("सुरक्षित रिमोट एक्सेस के लिए लॉगिन करें (Internet Required):");
-        
-        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(40, 20, 40, 20);
-        final EditText etEmail = new EditText(this); etEmail.setHint("Admin Email"); root.addView(etEmail);
-        final EditText etPass = new EditText(this); etPass.setHint("Password"); etPass.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD); root.addView(etPass);
-        b.setView(root);
-
-        b.setPositiveButton("Verify & Login", (dialog, which) -> {
-            String email = etEmail.getText().toString().trim();
-            String pass = etPass.getText().toString().trim();
-            
-            if(!email.equalsIgnoreCase(ADMIN_EMAIL)) {
-                Toast.makeText(MainActivity.this, "❌ एक्सेस अस्वीकृत! आप एडमिन नहीं हैं।", Toast.LENGTH_LONG).show();
-                return;
-            }
-
-            mAuth.signInWithEmailAndPassword(email, pass).addOnCompleteListener(this, task -> {
-                if (task.isSuccessful()) {
-                    Toast.makeText(MainActivity.this, "✅ एडमिन वेरिफाइड!", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(MainActivity.this, KeyGeneratorActivity.class);
-                    startActivity(intent);
-                } else {
-                    Toast.makeText(MainActivity.this, "❌ लॉगिन फेल! पासवर्ड चेक करें।", Toast.LENGTH_LONG).show();
-                }
-            });
-        });
-        b.setNegativeButton("Cancel", null);
-        b.show();
-    }
-
-    private void showLanguageSettingsDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(isHindi ? "⚙️ सेटिंग (Settings)" : "⚙️ Settings");
-        
-        // 🛠️ नाम अब बिल्कुल सही "एडमिन पैनल" दिखेगा
-        String[] options = isHindi ? new String[]{"English भाषा", "🔑 लाइसेंस पैनल", "🛠️ एडमिन पैनल (🔒 Firebase Admin)"} 
-                                   : new String[]{"Switch to Hindi", "License Panel", "Admin Panel (🔒 Firebase Admin)"};
-        
-        builder.setItems(options, (dialog, which) -> {
-            if (which == 0) { isHindi = !isHindi; updateUI(); }
-            else if (which == 1) { showActivationSystemDialog(); }
-            else { verifyAdminAndOpenGenerator(); } 
-        });
-        builder.show();
-    }
-
+    // ==================== SETUP FUNCTIONS ====================
     private void setupDateFilterSpinner() {
         if (spDateFilter == null) return;
-        String[] filterOptions = isHindi ? new String[]{"सभी ऑर्डर्स", "आज के", "इस महीने के", "📅 CUSTOM तारीख"} : new String[]{"All Orders", "Today", "This Month", "📅 Custom Range"};
-        ArrayAdapter<String> filterAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, filterOptions); spDateFilter.setAdapter(filterAdapter);
+        String[] filterOptions = isHindi
+                ? new String[]{"सभी ऑर्डर्स", "आज के", "इस महीने के", "📅 कस्टम तारीख"}
+                : new String[]{"All Orders", "Today", "This Month", "📅 Custom Range"};
+        ArrayAdapter<String> filterAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, filterOptions);
+        spDateFilter.setAdapter(filterAdapter);
     }
 
-    private void showDatePicker(final boolean isFrom) {
-        final Calendar c = Calendar.getInstance();
-        DatePickerDialog d = new DatePickerDialog(this, (v, y, m, day) -> {
-            Calendar p = Calendar.getInstance(); p.set(y, m, day);
-            if (isFrom) { 
-                p.set(Calendar.HOUR_OF_DAY, 0); fromTimestamp = p.getTimeInMillis(); 
-                if (btnFromDate != null) btnFromDate.setText("From: " + day); 
-            } else { 
-                p.set(Calendar.HOUR_OF_DAY, 23); toTimestamp = p.getTimeInMillis(); 
-                if (btnToDate != null) btnToDate.setText("To: " + day); 
-            }
-            refreshCurrentReportTab();
-        }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)); d.show();
-    }
-
-    private void updateUI() {
-        if (isHindi) {
-            if (btnShopView != null) btnShopView.setText("🏪 दुकान काउंटर"); 
-            if (btnDashView != null) btnDashView.setText("📊 डैशबोर्ड"); 
-            if (tabInventory != null) tabInventory.setText("📦 स्टॉक माल"); 
-            if (tabOrders != null) tabOrders.setText("🧾 उधारी सूची"); 
-            if (tabAnalytics != null) tabAnalytics.setText("📈 क्लोजिंग रिपोर्ट"); 
-            if (etSearchName != null) etSearchName.setHint("🔍 ग्राहक खोजें...");
-        } else {
-            if (btnShopView != null) btnShopView.setText("🏪 Shop Counter"); 
-            if (btnDashView != null) btnDashView.setText("📊 Dashboard"); 
-            if (tabInventory != null) tabInventory.setText("📦 Inventory"); 
-            if (tabOrders != null) tabOrders.setText("🧾 Udhar Orders"); 
-            if (tabAnalytics != null) tabAnalytics.setText("📈 Reports"); 
-            if (etSearchName != null) etSearchName.setHint("🔍 Search Customer...");
+    private void initSeedProducts() {
+        if (products.isEmpty()) {
+            products.add(new Product("p1", "गुलाब जामुन", "Gulab Jamun", 360, ""));
+            products.add(new Product("p2", "काजू कतली", "Kaju Katli", 820, ""));
+            products.add(new Product("p3", "रसगुल्ला", "Rasgulla", 320, ""));
         }
-        setupDateFilterSpinner(); updateCartButton(); renderShop();
     }
 
-    private void updateCartButton() { 
-        if (btnFloatingCart != null) btnFloatingCart.setText("🛒 कार्ट (" + (regularCart.size() + advanceCart.size()) + ")"); 
-    }
-    
-    private void switchSubTab(Button t) { 
-        if (tabInventory != null) tabInventory.setBackgroundColor(0xFFE0E0E0); 
-        if (tabOrders != null) tabOrders.setBackgroundColor(0xFFE0E0E0); 
-        if (tabAnalytics != null) tabAnalytics.setBackgroundColor(0xFFE0E0E0); 
-        if (t != null) t.setBackgroundColor(0xFF03DAC5); 
-        if (filterBarContainer != null) filterBarContainer.setVisibility(t == tabInventory ? View.GONE : View.VISIBLE); 
-    }
-    
-    private void refreshCurrentReportTab() { 
-        if (currentSubTab.equals("Orders")) renderOrdersTab(); 
-        else if (currentSubTab.equals("Analytics")) renderAnalyticsTab(); 
-    }
-    
-    private boolean shouldShowOrder(Order o) { 
-        if (etSearchName == null) return true;
-        String s = etSearchName.getText().toString().trim().toLowerCase(); 
-        if (!s.isEmpty() && !o.customerName.toLowerCase().contains(s)) return false; 
-        if (spDateFilter == null) return true;
-        int p = spDateFilter.getSelectedItemPosition(); 
-        if (p == 1 && !o.dateKey.equals(new SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault()).format(new Date()))) return false; 
-        if (p == 2 && !o.monthKey.equals(new SimpleDateFormat("MMM-yyyy", Locale.getDefault()).format(new Date()))) return false; 
-        if (p == 3 && (o.timestamp < fromTimestamp || o.timestamp > toTimestamp)) return false; 
-        return true; 
-    }
-    
-    private void initSeedProducts() { 
-        if (products.isEmpty()) { 
-            products.add(new Product("p1", "गुलाब जामुन", "Gulab Jamun", 360, "")); 
-            products.add(new Product("p2", "काजू कतली", "Kaju Katli", 820, "")); 
-            products.add(new Product("p3", "रसगुल्ला", "Rasgulla", 320, "")); 
-        } 
-    }
-
+    // ==================== RENDERING FUNCTIONS ====================
     private void renderShop() {
         if (shopProductList == null) return;
         shopProductList.removeAllViews();
-        
+
         for (final Product p : products) {
-            // Product Card - Container
+            // Product Card Container
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
             LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
-            cardParams.setMargins(0, 6, 0, 16);
+            cardParams.setMargins(0, 8, 0, 12);
             card.setLayoutParams(cardParams);
             card.setBackgroundColor(Color.WHITE);
-            card.setPadding(24, 24, 24, 24);
-            card.setElevation(3f);
-            
-            // Header Row - Image + Name
+            card.setPadding(16, 16, 16, 16);
+            card.setElevation(4f);
+
+            // Header Row: Image + Name
             LinearLayout headerRow = new LinearLayout(this);
             headerRow.setOrientation(LinearLayout.HORIZONTAL);
             headerRow.setGravity(Gravity.CENTER_VERTICAL);
-            
-            // Image
+            LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(-1, -2);
+            headerParams.setMargins(0, 0, 0, 12);
+            headerRow.setLayoutParams(headerParams);
+
+            // Product Image
             ImageView imageView = new ImageView(this);
-            LinearLayout.LayoutParams imgParams = new LinearLayout.LayoutParams(120, 120);
-            imgParams.setMargins(0, 0, 16, 0);
+            LinearLayout.LayoutParams imgParams = new LinearLayout.LayoutParams(100, 100);
+            imgParams.setMargins(0, 0, 12, 0);
             imageView.setLayoutParams(imgParams);
+            imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
             if (!p.imageUriStr.isEmpty()) {
                 imageView.setImageURI(Uri.parse(p.imageUriStr));
             } else {
                 imageView.setImageResource(android.R.drawable.ic_menu_gallery);
             }
+            imageView.setBackgroundColor(Color.parseColor("#E0E0E0"));
             headerRow.addView(imageView);
-            
-            // Name Container
-            LinearLayout nameContainer = new LinearLayout(this);
-            nameContainer.setOrientation(LinearLayout.VERTICAL);
-            nameContainer.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
-            
+
+            // Product Info
+            LinearLayout infoContainer = new LinearLayout(this);
+            infoContainer.setOrientation(LinearLayout.VERTICAL);
+            infoContainer.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+
             TextView productName = new TextView(this);
             productName.setText(isHindi ? p.name : p.nameEn);
-            productName.setTextSize(18);
+            productName.setTextSize(16);
             productName.setTypeface(null, Typeface.BOLD);
             productName.setTextColor(Color.BLACK);
-            nameContainer.addView(productName);
-            
+            infoContainer.addView(productName);
+
             TextView priceText = new TextView(this);
-            priceText.setText("Price: ₹" + p.price);
-            priceText.setTextSize(14);
+            priceText.setText("₹" + p.price + " प्रति यूनिट");
+            priceText.setTextSize(13);
             priceText.setTextColor(Color.parseColor("#666666"));
-            nameContainer.addView(priceText);
-            
-            headerRow.addView(nameContainer);
+            LinearLayout.LayoutParams priceParams = new LinearLayout.LayoutParams(-2, -2);
+            priceParams.topMargin = 4;
+            priceText.setLayoutParams(priceParams);
+            infoContainer.addView(priceText);
+
+            headerRow.addView(infoContainer);
             card.addView(headerRow);
-            
-            // Input Row - Quantity
+
+            // Input Row: Quantity + Button
             LinearLayout inputRow = new LinearLayout(this);
             inputRow.setOrientation(LinearLayout.HORIZONTAL);
             inputRow.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
-            LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(0, -2, 1f);
-            inputParams.setMargins(0, 16, 8, 0);
-            
-            final EditText quantityInput = new EditText(this);
-            quantityInput.setHint("Qty (kg/pcs)");
-            quantityInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-            quantityInput.setLayoutParams(inputParams);
-            inputRow.addView(quantityInput);
-            
-            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(0, -2, 1f);
-            btnParams.setMargins(8, 16, 0, 0);
+
+            // Quantity Input
+            final EditText qtyInput = new EditText(this);
+            qtyInput.setHint("मात्रा (kg/pcs)");
+            qtyInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            LinearLayout.LayoutParams qtyParams = new LinearLayout.LayoutParams(0, 44, 1.2f);
+            qtyParams.setMargins(0, 0, 8, 0);
+            qtyInput.setLayoutParams(qtyParams);
+            qtyInput.setPadding(8, 8, 8, 8);
+            qtyInput.setBackgroundColor(Color.parseColor("#F5F5F5"));
+            inputRow.addView(qtyInput);
+
+            // Add to Cart Button
             Button addBtn = new Button(this);
-            addBtn.setText("🛒 Add");
+            addBtn.setText("🛒 जोड़ें");
+            addBtn.setTextSize(12);
+            addBtn.setTextColor(Color.WHITE);
+            addBtn.setBackgroundColor(Color.parseColor("#6200EE"));
+            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(0, 44, 1f);
             addBtn.setLayoutParams(btnParams);
             addBtn.setOnClickListener(v -> {
-                String qtyStr = quantityInput.getText().toString().trim();
-                if (!qtyStr.isEmpty()) {
-                    try {
-                        double qty = Double.parseDouble(qtyStr);
-                        regularCart.put(p.id, qty);
-                        updateCartButton();
-                        quantityInput.setText("");
-                        Toast.makeText(MainActivity.this, p.name + " added to cart!", Toast.LENGTH_SHORT).show();
-                    } catch (NumberFormatException e) {
-                        Toast.makeText(MainActivity.this, "Invalid quantity!", Toast.LENGTH_SHORT).show();
+                String qtyStr = qtyInput.getText().toString().trim();
+                if (qtyStr.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "मात्रा दर्ज करें!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                try {
+                    double qty = Double.parseDouble(qtyStr);
+                    if (qty <= 0) {
+                        Toast.makeText(MainActivity.this, "मात्रा 0 से अधिक होनी चाहिए!", Toast.LENGTH_SHORT).show();
+                        return;
                     }
-                } else {
-                    Toast.makeText(MainActivity.this, "Enter quantity!", Toast.LENGTH_SHORT).show();
+                    regularCart.put(p.id, qty);
+                    updateCartButton();
+                    qtyInput.setText("");
+                    Toast.makeText(MainActivity.this, p.name + " कार्ट में जोड़ दी गई!", Toast.LENGTH_SHORT).show();
+                } catch (NumberFormatException e) {
+                    Toast.makeText(MainActivity.this, "सही मात्रा दर्ज करें!", Toast.LENGTH_SHORT).show();
                 }
             });
             inputRow.addView(addBtn);
             card.addView(inputRow);
-            
+
             shopProductList.addView(card);
         }
     }
 
     private void renderInventoryTab() {
         if (dashDynamicContent == null) return;
-        dashDynamicContent.removeAllViews(); Button ba = new Button(this); ba.setText("➕ नई मिठाई जोड़ें"); ba.setOnClickListener(v -> showAddProductDialog()); dashDynamicContent.addView(ba);
-        for (final Product p : products) { LinearLayout r = new LinearLayout(this); TextView tv = new TextView(this); tv.setText(p.name + " - ₹" + p.price); r.addView(tv); dashDynamicContent.addView(r); }
+        dashDynamicContent.removeAllViews();
+
+        // Add Product Button
+        Button addProductBtn = new Button(this);
+        addProductBtn.setText("➕ नई मिठाई जोड़ें");
+        addProductBtn.setOnClickListener(v -> showAddProductDialog());
+        dashDynamicContent.addView(addProductBtn);
+
+        // List Products
+        for (Product p : products) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setBackgroundColor(Color.WHITE);
+            row.setPadding(12, 12, 12, 12);
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+            rowParams.setMargins(0, 4, 0, 4);
+            row.setLayoutParams(rowParams);
+            row.setElevation(1f);
+
+            TextView itemText = new TextView(this);
+            itemText.setText(p.name + " - ₹" + p.price);
+            itemText.setTextSize(14);
+            itemText.setTypeface(null, Typeface.BOLD);
+            row.addView(itemText);
+
+            dashDynamicContent.addView(row);
+        }
+    }
+
+    private void renderOrdersTab() {
+        if (dashDynamicContent == null) return;
+        dashDynamicContent.removeAllViews();
+
+        boolean found = false;
+        for (Order o : orders) {
+            if (!shouldShowOrder(o)) continue;
+            found = true;
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setBackgroundColor(Color.WHITE);
+            row.setPadding(12, 12, 12, 12);
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+            rowParams.setMargins(0, 4, 0, 4);
+            row.setLayoutParams(rowParams);
+            row.setElevation(1f);
+
+            TextView custText = new TextView(this);
+            custText.setText(o.customerName + " - ₹" + o.total);
+            custText.setTextSize(14);
+            custText.setTypeface(null, Typeface.BOLD);
+            row.addView(custText);
+
+            TextView timeText = new TextView(this);
+            timeText.setText("समय: " + o.time);
+            timeText.setTextSize(12);
+            timeText.setTextColor(Color.parseColor("#666666"));
+            row.addView(timeText);
+
+            dashDynamicContent.addView(row);
+        }
+
+        if (!found) {
+            TextView noData = new TextView(this);
+            noData.setText("कोई ऑर्डर नहीं मिला");
+            noData.setTextSize(14);
+            noData.setGravity(Gravity.CENTER);
+            noData.setTextColor(Color.parseColor("#999999"));
+            LinearLayout.LayoutParams noDataParams = new LinearLayout.LayoutParams(-1, 100);
+            noData.setLayoutParams(noDataParams);
+            dashDynamicContent.addView(noData);
+        }
+    }
+
+    private void renderAnalyticsTab() {
+        if (dashDynamicContent == null) return;
+        dashDynamicContent.removeAllViews();
+
+        double totalSales = 0;
+        double totalReceived = 0;
+        double totalDue = 0;
+
+        for (Order o : orders) {
+            if (!shouldShowOrder(o)) continue;
+            totalSales += o.total;
+            totalReceived += o.received;
+            totalDue += o.due;
+        }
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackgroundColor(Color.WHITE);
+        card.setPadding(16, 16, 16, 16);
+        card.setElevation(2f);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
+        cardParams.setMargins(0, 0, 0, 12);
+        card.setLayoutParams(cardParams);
+
+        // Title
+        TextView titleText = new TextView(this);
+        titleText.setText("📊 बिक्री सारांश");
+        titleText.setTextSize(16);
+        titleText.setTypeface(null, Typeface.BOLD);
+        card.addView(titleText);
+
+        // Total Sales
+        addAnalyticsRow(card, "कुल बिक्री", "₹" + (int) totalSales, Color.parseColor("#4CAF50"));
+
+        // Received
+        addAnalyticsRow(card, "प्राप्त", "₹" + (int) totalReceived, Color.parseColor("#2196F3"));
+
+        // Due
+        addAnalyticsRow(card, "बकाया", "₹" + (int) totalDue, Color.parseColor("#F44336"));
+
+        dashDynamicContent.addView(card);
+    }
+
+    private void addAnalyticsRow(LinearLayout container, String label, String value, int color) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+        rowParams.topMargin = 12;
+        row.setLayoutParams(rowParams);
+
+        TextView labelText = new TextView(this);
+        labelText.setText(label);
+        labelText.setTextSize(14);
+        labelText.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+        row.addView(labelText);
+
+        TextView valueText = new TextView(this);
+        valueText.setText(value);
+        valueText.setTextSize(16);
+        valueText.setTypeface(null, Typeface.BOLD);
+        valueText.setTextColor(color);
+        row.addView(valueText);
+
+        container.addView(row);
+    }
+
+    // ==================== HELPER FUNCTIONS ====================
+    private void switchSubTab(Button activeTab) {
+        // Reset all tabs
+        if (tabInventory != null) {
+            tabInventory.setBackgroundColor(Color.parseColor("#E0E0E0"));
+            tabInventory.setTextColor(Color.BLACK);
+        }
+        if (tabOrders != null) {
+            tabOrders.setBackgroundColor(Color.parseColor("#E0E0E0"));
+            tabOrders.setTextColor(Color.BLACK);
+        }
+        if (tabAnalytics != null) {
+            tabAnalytics.setBackgroundColor(Color.parseColor("#E0E0E0"));
+            tabAnalytics.setTextColor(Color.BLACK);
+        }
+
+        // Activate current tab
+        if (activeTab != null) {
+            activeTab.setBackgroundColor(Color.parseColor("#03DAC5"));
+            activeTab.setTextColor(Color.BLACK);
+        }
+
+        // Show/hide filter bar
+        if (filterBarContainer != null) {
+            filterBarContainer.setVisibility(activeTab == tabInventory ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    private void refreshCurrentReportTab() {
+        if (currentSubTab.equals("Orders")) {
+            renderOrdersTab();
+        } else if (currentSubTab.equals("Analytics")) {
+            renderAnalyticsTab();
+        }
+    }
+
+    private boolean shouldShowOrder(Order o) {
+        // Search Filter
+        if (etSearchName != null) {
+            String searchTerm = etSearchName.getText().toString().trim().toLowerCase();
+            if (!searchTerm.isEmpty() && !o.customerName.toLowerCase().contains(searchTerm)) {
+                return false;
+            }
+        }
+
+        // Date Filter
+        if (spDateFilter != null) {
+            int selectedPos = spDateFilter.getSelectedItemPosition();
+            String todayKey = new SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault()).format(new Date());
+            String monthKey = new SimpleDateFormat("MMM-yyyy", Locale.getDefault()).format(new Date());
+
+            switch (selectedPos) {
+                case 1: // Today
+                    if (!o.dateKey.equals(todayKey)) return false;
+                    break;
+                case 2: // This Month
+                    if (!o.monthKey.equals(monthKey)) return false;
+                    break;
+                case 3: // Custom Date Range
+                    if (o.timestamp < fromTimestamp || o.timestamp > toTimestamp) return false;
+                    break;
+            }
+        }
+
+        return true;
+    }
+
+    private void updateCartButton() {
+        if (btnFloatingCart != null) {
+            int count = regularCart.size() + advanceCart.size();
+            btnFloatingCart.setText("🛒 कार्ट (" + count + ")");
+        }
+    }
+
+    private void showDatePicker(final boolean isFrom) {
+        final Calendar c = Calendar.getInstance();
+        new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
+            Calendar selected = Calendar.getInstance();
+            selected.set(year, month, dayOfMonth);
+            if (isFrom) {
+                selected.set(Calendar.HOUR_OF_DAY, 0);
+                selected.set(Calendar.MINUTE, 0);
+                selected.set(Calendar.SECOND, 0);
+                fromTimestamp = selected.getTimeInMillis();
+                if (btnFromDate != null) btnFromDate.setText("शुरु: " + dayOfMonth);
+            } else {
+                selected.set(Calendar.HOUR_OF_DAY, 23);
+                selected.set(Calendar.MINUTE, 59);
+                selected.set(Calendar.SECOND, 59);
+                toTimestamp = selected.getTimeInMillis();
+                if (btnToDate != null) btnToDate.setText("अंत: " + dayOfMonth);
+            }
+            refreshCurrentReportTab();
+        }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private void updateUI() {
+        if (isHindi) {
+            if (btnShopView != null) btnShopView.setText("🛍️ दुकान");
+            if (btnDashView != null) btnDashView.setText("📊 डैशबोर्ड");
+            if (tabInventory != null) tabInventory.setText("📦 स्टॉक");
+            if (tabOrders != null) tabOrders.setText("🧾 उधारी");
+            if (tabAnalytics != null) tabAnalytics.setText("📈 रिपोर्ट");
+            if (etSearchName != null) etSearchName.setHint("🔍 नाम खोजें...");
+        } else {
+            if (btnShopView != null) btnShopView.setText("🛍️ Shop");
+            if (btnDashView != null) btnDashView.setText("📊 Dashboard");
+            if (tabInventory != null) tabInventory.setText("📦 Inventory");
+            if (tabOrders != null) tabOrders.setText("🧾 Orders");
+            if (tabAnalytics != null) tabAnalytics.setText("📈 Reports");
+            if (etSearchName != null) etSearchName.setHint("🔍 Search...");
+        }
+        setupDateFilterSpinner();
+        updateCartButton();
+        renderShop();
+    }
+
+    // ==================== DIALOG FUNCTIONS ====================
+    private void showLanguageSettingsDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(isHindi ? "⚙️ सेटिंग्स" : "⚙️ Settings");
+        String[] options = isHindi
+                ? new String[]{"🌐 English", "🔑 लाइसेंस पैनल", "🛠️ Admin Panel"}
+                : new String[]{"🌐 Hindi", "🔑 License Panel", "🛠️ Admin Panel"};
+        builder.setItems(options, (dialog, which) -> {
+            if (which == 0) {
+                isHindi = !isHindi;
+                updateUI();
+            } else if (which == 1) {
+                showActivationSystemDialog();
+            } else {
+                verifyAdminAndOpenGenerator();
+            }
+        });
+        builder.show();
     }
 
     private void showAddProductDialog() {
-        if (!isAppActivated) { showActivationSystemDialog(); return; }
-        AlertDialog.Builder b = new AlertDialog.Builder(this); b.setTitle("➕ Add Product"); final EditText en = new EditText(this); b.setView(en); b.setPositiveButton("Save", (d, w) -> { products.add(new Product("p"+(products.size()+1), en.getText().toString(), en.getText().toString(), 350, "")); renderInventoryTab(); }); b.show();
+        if (!isAppActivated) {
+            showActivationSystemDialog();
+            return;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("➕ नई मिठाई जोड़ें");
+        final EditText input = new EditText(this);
+        builder.setView(input);
+        builder.setPositiveButton("Save", (dialog, which) -> {
+            String name = input.getText().toString().trim();
+            if (!name.isEmpty()) {
+                products.add(new Product("p" + (products.size() + 1), name, name, 300, ""));
+                renderInventoryTab();
+                Toast.makeText(MainActivity.this, "मिठाई जोड़ दी गई!", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
     }
 
     private void showCartDialog() {
-        if (!isAppActivated) { showActivationSystemDialog(); return; }
-        AlertDialog.Builder b = new AlertDialog.Builder(this); b.setTitle("FINAL BILL"); LinearLayout l = new LinearLayout(this); l.setOrientation(LinearLayout.VERTICAL); final EditText en = new EditText(this); en.setHint("Customer Name"); l.addView(en); b.setView(l);
-        b.setPositiveButton("Done", (d, w) -> { orders.add(new Order("ORD"+System.currentTimeMillis(), en.getText().toString(), new ArrayList<>(), 500, 500, 0)); regularCart.clear(); advanceCart.clear(); updateCartButton(); }); b.show();
+        if (regularCart.isEmpty()) {
+            Toast.makeText(this, "कार्ट खाली है!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("🛒 ऑर्डर पूरा करें");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(16, 16, 16, 16);
+
+        EditText customerName = new EditText(this);
+        customerName.setHint("ग्राहक का नाम");
+        layout.addView(customerName);
+
+        EditText amountReceived = new EditText(this);
+        amountReceived.setHint("राशि प्राप्त");
+        amountReceived.setInputType(InputType.TYPE_CLASS_NUMBER);
+        layout.addView(amountReceived);
+
+        builder.setView(layout);
+        builder.setPositiveButton("Complete", (dialog, which) -> {
+            String name = customerName.getText().toString().trim();
+            if (name.isEmpty()) {
+                Toast.makeText(MainActivity.this, "नाम दर्ज करें!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            double total = 0;
+            ArrayList<OrderItem> items = new ArrayList<>();
+            for (String productId : regularCart.keySet()) {
+                Product p = products.stream().filter(prod -> prod.id.equals(productId)).findFirst().orElse(null);
+                if (p != null) {
+                    double qty = regularCart.get(productId);
+                    double price = p.price * qty;
+                    total += price;
+                    items.add(new OrderItem(productId, p.name, p.nameEn, qty, price, false));
+                }
+            }
+
+            double received = 0;
+            try {
+                received = Double.parseDouble(amountReceived.getText().toString());
+            } catch (NumberFormatException e) {
+                received = total;
+            }
+
+            double due = total - received;
+            orders.add(new Order("ORD" + System.currentTimeMillis(), name, items, total, received, due));
+            regularCart.clear();
+            advanceCart.clear();
+            updateCartButton();
+            Toast.makeText(MainActivity.this, "ऑर्डर पूरा हो गया!", Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
     }
 
-    private void renderOrdersTab() { 
-        if (dashDynamicContent == null) return;
-        dashDynamicContent.removeAllViews(); 
-        for(Order o : orders) { 
-            if(!shouldShowOrder(o)) continue; 
-            TextView tv = new TextView(this); tv.setText(o.customerName + " - ₹" + o.total); 
-            dashDynamicContent.addView(tv); 
-        } 
+    private void showActivationSystemDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("🔐 App Activation Required");
+        builder.setMessage("यह app license protected है। Activate करने के लिए contact करें।");
+        builder.setPositiveButton("OK", null);
+        builder.show();
     }
-    
-    private void renderAnalyticsTab() { 
-        if (dashDynamicContent == null) return;
-        dashDynamicContent.removeAllViews(); 
-        TextView tv = new TextView(this); tv.setText("📊 Sales Summary Reports"); 
-        dashDynamicContent.addView(tv); 
+
+    private void verifyAdminAndOpenGenerator() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Admin Login");
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+
+        EditText emailInput = new EditText(this);
+        emailInput.setHint("Email");
+        layout.addView(emailInput);
+
+        EditText passwordInput = new EditText(this);
+        passwordInput.setHint("Password");
+        passwordInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        layout.addView(passwordInput);
+
+        builder.setView(layout);
+        builder.setPositiveButton("Login", (dialog, which) -> {
+            String email = emailInput.getText().toString().trim();
+            String password = passwordInput.getText().toString().trim();
+
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(MainActivity.this, "सभी fields भरें!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    Toast.makeText(MainActivity.this, "✅ Admin Verified!", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(MainActivity.this, KeyGeneratorActivity.class);
+                    startActivity(intent);
+                } else {
+                    Toast.makeText(MainActivity.this, "❌ Login Failed!", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
     }
 }
