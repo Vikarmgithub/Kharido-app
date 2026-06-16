@@ -3,6 +3,8 @@ package com.khridoapp.mithai;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
+import android.content.ClipboardManager; // क्लिपबोर्ड के लिए इम्पोर्ट
+import android.content.ClipData;         // क्लिपबोर्ड डेटा के लिए इम्पोर्ट
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -210,15 +212,12 @@ public class MainActivity extends Activity {
         btnFloatingCart.setOnClickListener(v -> showCartDialog());
     }
 
-    // 🔥 नया सुपर कॉम्प्लेक्स की-कैलकुलेटर अल्गोरिदम (Crypto Shifting Method)
     private boolean checkLicenseKey(String inputKey) {
         if (inputKey == null || inputKey.isEmpty() || !inputKey.startsWith("MITHAI-")) return false;
         try {
-            // स्टेप 1: डिवाइस आईडी को मॉडिफाई करें (Character Shifting)
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < deviceId.length(); i++) {
                 char ch = deviceId.charAt(i);
-                // हर कैरेक्टर को 3 स्टेप आगे शिफ्ट करें (A -> D, 1 -> 4)
                 if (Character.isLetterOrDigit(ch)) {
                     sb.append((char) (ch + 3));
                 } else {
@@ -227,14 +226,12 @@ public class MainActivity extends Activity {
             }
             String shiftedStr = sb.toString().toUpperCase();
 
-            // स्टेप 2: पहले और आखिरी अक्षर को आपस में बदलें (Swapping)
             if (shiftedStr.length() > 2) {
                 char first = shiftedStr.charAt(0);
                 char last = shiftedStr.charAt(shiftedStr.length() - 1);
                 shiftedStr = last + shiftedStr.substring(1, shiftedStr.length() - 1) + first;
             }
 
-            // स्टेप 3: फाइनल की का ढांचा तैयार करें (Master Pin 893 के साथ)
             String correctCalculatedKey = "MITHAI-" + shiftedStr + "-" + (deviceId.length() * 7) + "-893";
             
             return inputKey.equals(correctCalculatedKey);
@@ -243,6 +240,7 @@ public class MainActivity extends Activity {
         }
     }
 
+    // 🔒 कॉपी बटन के साथ नया एक्टिवेशन डायलॉग
     private void showActivationSystemDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(isHindi ? "🔑 सुरक्षित डिवाइस लाइसेंस एक्टिवेशन" : "🔑 Device Locked Activation");
@@ -259,12 +257,33 @@ public class MainActivity extends Activity {
         layout.addView(tvMsg);
 
         TextView tvIdDisplay = new TextView(this);
-        tvIdDisplay.setText("\n🆔 Device ID: " + deviceId + "\n");
+        tvIdDisplay.setText("\n🆔 Device ID: " + deviceId);
         tvIdDisplay.setTextSize(15);
         tvIdDisplay.setTypeface(null, Typeface.BOLD);
         tvIdDisplay.setTextColor(Color.RED);
         tvIdDisplay.setGravity(Gravity.CENTER);
         layout.addView(tvIdDisplay);
+
+        // 🔥 📋 कॉपी आईडी बटन जोड़ा गया
+        Button btnCopyId = new Button(this);
+        btnCopyId.setText(isHindi ? "📋 डिवाइस आईडी कॉपी करें" : "📋 Copy Device ID");
+        btnCopyId.setTextSize(12);
+        btnCopyId.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFE0E0E0));
+        btnCopyId.setTextColor(Color.BLACK);
+        LinearLayout.LayoutParams btnCopyLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        btnCopyLp.gravity = Gravity.CENTER;
+        btnCopyLp.setMargins(0, 8, 0, 24);
+        btnCopyId.setLayoutParams(btnCopyLp);
+        
+        btnCopyId.setOnClickListener(v -> {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText("DeviceID", deviceId);
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(MainActivity.this, isHindi ? "आईडी क्लिपबोर्ड पर कॉपी हो गई! ✅" : "Device ID Copied! ✅", Toast.LENGTH_SHORT).show();
+            }
+        });
+        layout.addView(btnCopyId);
 
         final EditText etKeyInput = new EditText(this);
         etKeyInput.setHint(isHindi ? "कॉम्प्लेक्स लाइसेंस की यहाँ डालें..." : "Enter complex license key...");
