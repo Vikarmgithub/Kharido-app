@@ -1606,32 +1606,35 @@ layout.addView(discountAmount);
                 return;
             }
 
-            
+// LINE 1609-1613 YE PURA HATA DE (discount wala block jo tune dala hai)
+
+ArrayList<OrderItem> items = new ArrayList<>();
+double total = 0;
+for (String productId : editableQty.keySet()) {
+    double q = editableQty.get(productId)[0];
+    if (q <= 0) continue;
+    Product pr = null;
+    for (Product x : products) if (x.id.equals(productId)) { pr = x; break; }
+    if (pr != null) {
+        double price = pr.price * q;
+        total += price;
+        boolean isAdv = advanceCart.containsKey(productId);
+        items.add(new OrderItem(productId, pr.name, pr.nameEn, q, price, isAdv));
+    }
+}
+
+double received = 0;
+try { received = Double.parseDouble(amountReceived.getText().toString()); }
+catch (NumberFormatException e) { received = total; }
+
 double discount = 0;
 try { discount = Double.parseDouble(discountAmount.getText().toString()); }
 catch (NumberFormatException e) { discount = 0; }
+
 double due = total - received - discount;
 if (due < 0) due = 0;
-            ArrayList<OrderItem> items = new ArrayList<>();
-            for (String productId : editableQty.keySet()) {
-                double q = editableQty.get(productId)[0];
-                if (q <= 0) continue;
-                Product pr = null;
-                for (Product x : products) if (x.id.equals(productId)) { pr = x; break; }
-                if (pr != null) {
-                    double price = pr.price * q;
-                    total += price;
-                    boolean isAdv = advanceCart.containsKey(productId);
-                    items.add(new OrderItem(productId, pr.name, pr.nameEn, q, price, isAdv));
-                }
-            }
 
-            double received = 0;
-            try { received = Double.parseDouble(amountReceived.getText().toString()); }
-            catch (NumberFormatException e) { received = total; }
-
-            double due = total - received;
-            orders.add(new Order("ORD" + System.currentTimeMillis(), name, items, total, received, due));
+orders.add(new Order("ORD" + System.currentTimeMillis(), name, items, total, received, due, discount));
             regularCart.clear();
             advanceCart.clear();
             updateCartButton();
