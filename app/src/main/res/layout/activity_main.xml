@@ -111,6 +111,36 @@
                     <Button android:id="@+id/tabAnalytics" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📊 कमाई" android:textSize="12sp" android:backgroundTint="#E0E0E0" android:textColor="#000000"/>
                 </LinearLayout>
 
+                <!-- 🔍 लाइव फ़िल्टर और सर्च बार कंटेनर (यह रिपोर्ट और कमाई टैब में दिखेगा) -->
+                <LinearLayout
+                    android:id="@+id/filterBarContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="#FFFFFF"
+                    android:padding="8dp"
+                    android:layout_marginBottom="12dp"
+                    android:elevation="2dp"
+                    android:visibility="gone">
+
+                    <EditText
+                        android:id="@+id/etSearchName"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:hint="🔍 ग्राहक का नाम खोजें..."
+                        android:textSize="14sp"
+                        android:background="@android:drawable/edit_text"
+                        android:padding="8dp" />
+
+                    <Spinner
+                        android:id="@+id/spDateFilter"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginLeft="8dp" />
+                </LinearLayout>
+
                 <LinearLayout
                     android:id="@+id/dashDynamicContent"
                     android:layout_width="match_parent"
