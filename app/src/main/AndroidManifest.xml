@@ -3,6 +3,8 @@
     package="com.khridoapp.mithai">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:allowBackup="true"
@@ -20,10 +22,20 @@
             </intent-filter>
         </activity>
 
-        <activity 
+        <activity
             android:name=".KeyGeneratorActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
+
+        <!-- Nightly backup receiver -->
+        <receiver
+            android:name=".BackupReceiver"
+            android:exported="false">
+            <intent-filter>
+                <!-- Phone restart hone ke baad bhi alarm reschedule ho ──>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 
