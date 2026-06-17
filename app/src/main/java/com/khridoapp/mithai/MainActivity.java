@@ -27,6 +27,16 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.util.Collections;
 import android.os.CountDownTimer;
 import android.widget.Chronometer;
 import java.text.SimpleDateFormat;
@@ -116,6 +126,7 @@ private String tempSelectedImageUri = "";
 
     // Firebase & Activation
     private FirebaseAuth mAuth;
+    private DatabaseReference dbRef;
     private boolean isAppActivated = false;
     private String deviceId = "";
     private SharedPreferences activationPrefs;
@@ -138,6 +149,7 @@ private String tempSelectedImageUri = "";
 
         // Initialize Firebase
         mAuth = FirebaseAuth.getInstance();
+        dbRef = FirebaseDatabase.getInstance().getReference("mithai_backup");
 
         // Get Device ID
         try {
@@ -155,6 +167,7 @@ private String tempSelectedImageUri = "";
         initializeViews();
         setupListeners();
         initSeedProducts();
+        scheduleNightlyBackup();
         updateUI();
 
         // Check demo mode
@@ -729,10 +742,12 @@ private void showAddEditProductDialog(Product product) {
             product.nameEn = nameE;
             product.price = rate;
             product.imageUriStr = tempSelectedImageUri;
+            saveDataToPrefs();
             Toast.makeText(this, "✅ " + nameH + " Update हो गई!", Toast.LENGTH_SHORT).show();
         } else {
             products.add(new Product("p" + System.currentTimeMillis(),
                 nameH, nameE, rate, tempSelectedImageUri));
+            saveDataToPrefs();
             Toast.makeText(this, "✅ " + nameH + " जोड़ी गई!", Toast.LENGTH_SHORT).show();
         }
         renderInventoryTab();
@@ -893,6 +908,7 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
             Button btnDone = makeActionBtn("✅ Done", "#4CAF50");
             btnDone.setOnClickListener(v -> {
                 fo.status = "Completed";
+                saveDataToPrefs();
                 renderOrdersTab();
                 Toast.makeText(this, "✅ ऑर्डर Complete!", Toast.LENGTH_SHORT).show();
             });
@@ -908,6 +924,7 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
                     .setMessage(fo.customerName + " का ऑर्डर cancel करना है?")
                     .setPositiveButton("हाँ", (d, w) -> {
                         fo.status = "Cancelled";
+                        saveDataToPrefs();
                         renderOrdersTab();
                         Toast.makeText(this, "❌ Cancelled", Toast.LENGTH_SHORT).show();
                     })
@@ -1152,8 +1169,10 @@ private void showUpdateDueDialog(Order o) {
             if (o.due <= 0) {
                 o.due = 0;
                 o.status = "Completed";
+                saveDataToPrefs();
                 Toast.makeText(this, "🎉 पूरा उधार Clear!", Toast.LENGTH_LONG).show();
             } else {
+                saveDataToPrefs();
                 String msg = "✅ ₹" + (int) payment + " मिले";
                 if (discountGiven > 0) msg += ", 🏷️ छूट ₹" + (int) discountGiven;
                 msg += ", बकाया: ₹" + (int) o.due;
@@ -1531,23 +1550,25 @@ private void showUpdateDueDialog(Order o) {
     builder.setTitle(isHindi ? "⚙️ सेटिंग्स" : "⚙️ Settings");
 
     if (!isAppActivated) {
-        // Demo mode — License Panel dikhao
         String[] options = isHindi
-            ? new String[]{"🌐 English", "🔑 लाइसेंस पैनल", "🛠️ Admin Panel"}
-            : new String[]{"🌐 Hindi", "🔑 License Panel", "🛠️ Admin Panel"};
+            ? new String[]{"🌐 English", "🔑 लाइसेंस पैनल", "🛠️ Admin Panel", "☁️ Firebase Backup", "📥 Firebase Restore"}
+            : new String[]{"🌐 Hindi", "🔑 License Panel", "🛠️ Admin Panel", "☁️ Firebase Backup", "📥 Firebase Restore"};
         builder.setItems(options, (dialog, which) -> {
             if (which == 0) { isHindi = !isHindi; updateUI(); }
             else if (which == 1) { showActivationSystemDialog(); }
-            else { verifyAdminAndOpenGenerator(); }
+            else if (which == 2) { verifyAdminAndOpenGenerator(); }
+            else if (which == 3) { backupToFirebase(); }
+            else { restoreFromFirebase(); }
         });
     } else {
-        // Activated — License Panel hide
         String[] options = isHindi
-            ? new String[]{"🌐 English", "🛠️ Admin Panel"}
-            : new String[]{"🌐 Hindi", "🛠️ Admin Panel"};
+            ? new String[]{"🌐 English", "🛠️ Admin Panel", "☁️ Firebase Backup", "📥 Firebase Restore"}
+            : new String[]{"🌐 Hindi", "🛠️ Admin Panel", "☁️ Firebase Backup", "📥 Firebase Restore"};
         builder.setItems(options, (dialog, which) -> {
             if (which == 0) { isHindi = !isHindi; updateUI(); }
-            else { verifyAdminAndOpenGenerator(); }
+            else if (which == 1) { verifyAdminAndOpenGenerator(); }
+            else if (which == 2) { backupToFirebase(); }
+            else { restoreFromFirebase(); }
         });
     }
     builder.show();
@@ -1870,6 +1891,7 @@ private void showUpdateDueDialog(Order o) {
             regularCart.clear();
             advanceCart.clear();
             updateCartButton();
+            saveDataToPrefs();
             Toast.makeText(MainActivity.this, isHindi ? "✅ ऑर्डर पूरा हो गया!" : "✅ Order confirmed!", Toast.LENGTH_SHORT).show();
         });
         builder.setNegativeButton(isHindi ? "रद्द करें" : "Cancel", null);
@@ -2007,6 +2029,226 @@ private boolean validateLicenseKey(String enteredKey, String dId) {
         return false;
     }
 }
+
+    // ==================== FIREBASE BACKUP / RESTORE ====================
+
+    // ── Daily raat 8 bje automatic backup schedule karo ──
+    private void scheduleNightlyBackup() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) return;
+
+        Intent intent = new Intent(this, BackupReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+            this, 101, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.HOUR_OF_DAY, 20);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        // 8 PM nikal gayi ho to kal ke liye set karo
+        if (cal.getTimeInMillis() <= System.currentTimeMillis()) {
+            cal.add(Calendar.DAY_OF_YEAR, 1);
+        }
+
+        alarmManager.setInexactRepeating(
+            AlarmManager.RTC_WAKEUP,
+            cal.getTimeInMillis(),
+            AlarmManager.INTERVAL_DAY,
+            pendingIntent);
+    }
+
+    // ── Koi bhi data change ho to SharedPreferences mein save karo (BackupReceiver padega) ──
+    private void saveDataToPrefs() {
+        try {
+            JSONArray pArr = new JSONArray();
+            for (Product p : products) {
+                JSONObject po = new JSONObject();
+                po.put("id", p.id); po.put("name", p.name); po.put("nameEn", p.nameEn);
+                po.put("price", p.price);
+                po.put("imageUriStr", p.imageUriStr != null ? p.imageUriStr : "");
+                pArr.put(po);
+            }
+            JSONArray oArr = new JSONArray();
+            for (Order o : orders) {
+                JSONObject oo = new JSONObject();
+                oo.put("id", o.id); oo.put("customerName", o.customerName);
+                oo.put("time", o.time); oo.put("status", o.status);
+                oo.put("dateKey", o.dateKey); oo.put("monthKey", o.monthKey);
+                oo.put("timestamp", o.timestamp); oo.put("total", o.total);
+                oo.put("received", o.received); oo.put("due", o.due);
+                oo.put("discount", o.discount);
+                JSONArray iArr = new JSONArray();
+                for (OrderItem item : o.items) {
+                    JSONObject io = new JSONObject();
+                    io.put("id", item.id); io.put("name", item.name); io.put("nameEn", item.nameEn);
+                    io.put("qty", item.qty); io.put("price", item.price);
+                    io.put("isAdvance", item.isAdvance);
+                    io.put("advanceCompleted", item.advanceCompleted);
+                    iArr.put(io);
+                }
+                oo.put("items", iArr);
+                oArr.put(oo);
+            }
+            getSharedPreferences("MithaiData", Context.MODE_PRIVATE).edit()
+                .putString("products_json", pArr.toString())
+                .putString("orders_json", oArr.toString())
+                .apply();
+        } catch (Exception e) { /* silent */ }
+    }
+
+    // ── Manual backup: aaj ki date key mein save karo + 10 din se purane hatao ──
+    private void backupToFirebase() {
+        if (orders.isEmpty()) {
+            Toast.makeText(this, "⚠️ कोई Data नहीं — Backup Skip!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        saveDataToPrefs(); // latest data prefs mein bhi daal do
+
+        SharedPreferences prefs = getSharedPreferences("MithaiData", Context.MODE_PRIVATE);
+        String ordersJson   = prefs.getString("orders_json", "[]");
+        String productsJson = prefs.getString("products_json", "[]");
+
+        String dateKey    = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        String backupTime = new SimpleDateFormat("dd-MMM-yyyy HH:mm", Locale.getDefault()).format(new Date());
+
+        DatabaseReference todayRef = dbRef.child(deviceId).child(dateKey);
+        todayRef.child("orders").setValue(ordersJson);
+        todayRef.child("products").setValue(productsJson);
+        todayRef.child("backupTime").setValue(backupTime)
+            .addOnSuccessListener(v ->
+                Toast.makeText(this,
+                    "✅ Backup हो गया!\n📅 " + dateKey + "\n📦 " + orders.size() + " Orders",
+                    Toast.LENGTH_LONG).show())
+            .addOnFailureListener(e ->
+                Toast.makeText(this, "❌ Backup Failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+
+        // 10 din se purane delete karo
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        Calendar cal = Calendar.getInstance();
+        for (int i = 11; i <= 60; i++) {
+            cal.setTime(new Date());
+            cal.add(Calendar.DAY_OF_YEAR, -i);
+            dbRef.child(deviceId).child(sdf.format(cal.getTime())).removeValue();
+        }
+    }
+
+    // ── Restore: Firebase pe available dates dikhao, user choose kare ──
+    private void restoreFromFirebase() {
+        Toast.makeText(this, "📥 उपलब्ध Backups देख रहे हैं...", Toast.LENGTH_SHORT).show();
+
+        dbRef.child(deviceId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (!snapshot.exists() || !snapshot.hasChildren()) {
+                    Toast.makeText(MainActivity.this, "❌ कोई Backup नहीं मिला!", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                ArrayList<String> dates = new ArrayList<>();
+                for (DataSnapshot child : snapshot.getChildren()) {
+                    String key = child.getKey();
+                    if (key != null) dates.add(key);
+                }
+                Collections.sort(dates, Collections.reverseOrder()); // नया सबसे ऊपर
+
+                String[] dateArr = dates.toArray(new String[0]);
+                new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("📅 Backup Date चुनें")
+                    .setItems(dateArr, (dialog, which) -> restoreFromDate(dateArr[which]))
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            }
+            @Override
+            public void onCancelled(DatabaseError error) {
+                Toast.makeText(MainActivity.this, "❌ Firebase Error: " + error.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void restoreFromDate(String dateKey) {
+        Toast.makeText(this, "📥 " + dateKey + " का Data Restore हो रहा है...", Toast.LENGTH_SHORT).show();
+
+        dbRef.child(deviceId).child(dateKey).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (!snapshot.exists()) {
+                    Toast.makeText(MainActivity.this, "❌ इस तारीख का Backup नहीं मिला!", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                try {
+                    String ordersJson   = snapshot.child("orders").getValue(String.class);
+                    String productsJson = snapshot.child("products").getValue(String.class);
+                    String backupTime   = snapshot.child("backupTime").getValue(String.class);
+
+                    if (ordersJson == null || productsJson == null) {
+                        Toast.makeText(MainActivity.this, "❌ Backup Data अधूरा है!", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    // Products restore
+                    JSONArray pArr = new JSONArray(productsJson);
+                    // Sirf custom products update karo (seed wale rahne do)
+                    ArrayList<Product> restoredProducts = new ArrayList<>();
+                    for (int i = 0; i < pArr.length(); i++) {
+                        JSONObject po = pArr.getJSONObject(i);
+                        restoredProducts.add(new Product(
+                            po.getString("id"), po.getString("name"),
+                            po.optString("nameEn", po.getString("name")),
+                            po.getDouble("price"),
+                            po.optString("imageUriStr", "")));
+                    }
+                    products.clear();
+                    products.addAll(restoredProducts);
+
+                    // Orders restore
+                    JSONArray oArr = new JSONArray(ordersJson);
+                    orders.clear();
+                    for (int i = 0; i < oArr.length(); i++) {
+                        JSONObject oo = oArr.getJSONObject(i);
+                        ArrayList<OrderItem> items = new ArrayList<>();
+                        JSONArray iArr = oo.getJSONArray("items");
+                        for (int j = 0; j < iArr.length(); j++) {
+                            JSONObject io = iArr.getJSONObject(j);
+                            OrderItem oi = new OrderItem(
+                                io.getString("id"), io.getString("name"),
+                                io.optString("nameEn", io.getString("name")),
+                                io.getDouble("qty"), io.getDouble("price"),
+                                io.optBoolean("isAdvance", false));
+                            oi.advanceCompleted = io.optBoolean("advanceCompleted", false);
+                            items.add(oi);
+                        }
+                        Order order = new Order(
+                            oo.getString("id"), oo.getString("customerName"),
+                            items, oo.getDouble("total"),
+                            oo.getDouble("received"), oo.getDouble("due"),
+                            oo.optDouble("discount", 0));
+                        order.status   = oo.optString("status", "Pending");
+                        order.time     = oo.optString("time", "");
+                        order.dateKey  = oo.optString("dateKey", "");
+                        order.monthKey = oo.optString("monthKey", "");
+                        order.timestamp = oo.optLong("timestamp", 0);
+                        orders.add(order);
+                    }
+
+                    renderShop();
+                    renderInventoryTab();
+                    Toast.makeText(MainActivity.this,
+                        "✅ Restore हो गया!\n📅 " + dateKey +
+                        "\n⏱ Backup: " + (backupTime != null ? backupTime : "Unknown") +
+                        "\n📦 " + orders.size() + " Orders",
+                        Toast.LENGTH_LONG).show();
+
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "❌ Restore Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            }
+            @Override
+            public void onCancelled(DatabaseError error) {
+                Toast.makeText(MainActivity.this, "❌ Firebase Error: " + error.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
 
     private void verifyAdminAndOpenGenerator() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
