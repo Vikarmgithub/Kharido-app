@@ -27,6 +27,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.firebase.auth.FirebaseAuth;
+import android.os.CountDownTimer;
+import android.widget.Chronometer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -121,6 +123,13 @@ private String tempSelectedImageUri = "";
     private static final String KEY_IS_ACTIVATED = "IsAppFullyActivated";
     private static final String ADMIN_EMAIL = "vikarmsrkian6514@gmail.com";
 
+    // Demo Mode
+    private static final String KEY_DEMO_START = "DemoStartTime";
+    private static final long DEMO_DURATION_MS = 24 * 60 * 60 * 1000L; // 24 hours
+    private boolean isDemoMode = false;
+    private CountDownTimer demoCountDownTimer = null;
+    private TextView tvDemoTimer = null;
+
     // ==================== LIFECYCLE ====================
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -148,8 +157,21 @@ private String tempSelectedImageUri = "";
         initSeedProducts();
         updateUI();
 
-        // Show Activation if needed
-        if (!isAppActivated) {
+        // Check demo mode
+        long demoStart = activationPrefs.getLong(KEY_DEMO_START, 0);
+        if (!isAppActivated && demoStart > 0) {
+            long elapsed = System.currentTimeMillis() - demoStart;
+            if (elapsed < DEMO_DURATION_MS) {
+                // Demo still valid
+                isDemoMode = true;
+                isAppActivated = true; // full access during demo
+                startDemoTimer(DEMO_DURATION_MS - elapsed);
+            } else {
+                // Demo expired — clear it
+                activationPrefs.edit().remove(KEY_DEMO_START).apply();
+                showActivationSystemDialog();
+            }
+        } else if (!isAppActivated) {
             showActivationSystemDialog();
         }
     }
@@ -182,6 +204,9 @@ private String tempSelectedImageUri = "";
 
         // Settings
         btnSettings = findViewById(R.id.btnSettings);
+
+        // Demo Timer TextView
+        tvDemoTimer = findViewById(R.id.tvDemoTimer);
 
         // Setup Date Filter Spinner
         setupDateFilterSpinner();
@@ -1916,11 +1941,48 @@ private void showUpdateDueDialog(Order o) {
         }
     });
 
-    builder.setNegativeButton("Demo Mode", (dialog, which) -> {
-        Toast.makeText(this, "⚠️ Demo Mode — सीमित सुविधाएं", Toast.LENGTH_SHORT).show();
-    });
+    // Demo button — sirf pehli baar dikhao
+    long existingDemo = activationPrefs.getLong(KEY_DEMO_START, 0);
+    boolean demoUsed = existingDemo > 0;
+    if (!demoUsed) {
+        builder.setNegativeButton("🕐 Demo (1 दिन)", (dialog, which) -> {
+            activationPrefs.edit().putLong(KEY_DEMO_START, System.currentTimeMillis()).apply();
+            isDemoMode = true;
+            isAppActivated = true;
+            startDemoTimer(DEMO_DURATION_MS);
+            Toast.makeText(this, "✅ Demo Activated for 1 Day!", Toast.LENGTH_LONG).show();
+        });
+    }
 
     builder.show();
+}
+
+private void startDemoTimer(long remainingMs) {
+    if (tvDemoTimer != null) {
+        tvDemoTimer.setVisibility(android.view.View.VISIBLE);
+    }
+    if (demoCountDownTimer != null) demoCountDownTimer.cancel();
+
+    demoCountDownTimer = new CountDownTimer(remainingMs, 1000) {
+        @Override
+        public void onTick(long millisUntilFinished) {
+            long h = millisUntilFinished / 3600000;
+            long m = (millisUntilFinished % 3600000) / 60000;
+            long s = (millisUntilFinished % 60000) / 1000;
+            String timerText = String.format("⏱ Demo: %02d:%02d:%02d", h, m, s);
+            if (tvDemoTimer != null) tvDemoTimer.setText(timerText);
+        }
+        @Override
+        public void onFinish() {
+            // Demo khatam
+            isDemoMode = false;
+            isAppActivated = false;
+            activationPrefs.edit().remove(KEY_DEMO_START).apply();
+            if (tvDemoTimer != null) tvDemoTimer.setVisibility(android.view.View.GONE);
+            Toast.makeText(MainActivity.this, "⏰ Demo समाप्त! App activate करें।", Toast.LENGTH_LONG).show();
+            showActivationSystemDialog();
+        }
+    }.start();
 }
 
 // Key validation — KeyGeneratorActivity ke algorithm ka reverse
