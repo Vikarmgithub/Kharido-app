@@ -1902,7 +1902,8 @@ private void showUpdateDueDialog(Order o) {
     private void showActivationSystemDialog() {
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
     builder.setTitle("🔐 App Activation");
-    builder.setCancelable(false); // Back press se band na ho
+    // Demo chal raha ho to back ja sako, warna lock raho
+    builder.setCancelable(isDemoMode);
 
     LinearLayout layout = new LinearLayout(this);
     layout.setOrientation(LinearLayout.VERTICAL);
@@ -1983,6 +1984,11 @@ private void showUpdateDueDialog(Order o) {
             startDemoTimer(DEMO_DURATION_MS);
             Toast.makeText(this, "✅ Demo Activated for 1 Day!", Toast.LENGTH_LONG).show();
         });
+    }
+
+    // Demo chal rha ho to "Baad mein" button dikhao
+    if (isDemoMode) {
+        builder.setNeutralButton("⬅️ बाद में", null);
     }
 
     builder.show();
