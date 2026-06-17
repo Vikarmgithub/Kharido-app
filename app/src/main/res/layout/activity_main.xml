@@ -39,6 +39,17 @@
                 android:textColor="#A5B4FC"
                 android:textSize="11sp"
                 android:layout_marginTop="2dp"/>
+
+            <TextView
+                android:id="@+id/tvDemoTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#FFD700"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:layout_marginTop="4dp"
+                android:visibility="gone"/>
         </LinearLayout>
 
         <LinearLayout
