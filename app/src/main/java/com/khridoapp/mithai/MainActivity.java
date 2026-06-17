@@ -854,7 +854,7 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         btnRow.addView(btnView);
 
         // Udhar update
-        if (o.due > 0 && !o.status.equals("Cancelled")) {
+        if (o.due > 0 && !o.status.equals("Cancelled") && !o.status.equals("Completed")) {
             Button btnPay = makeActionBtn("💰 उधार", "#FF9800");
             btnPay.setOnClickListener(v -> showUpdateDueDialog(fo));
             LinearLayout.LayoutParams pP = new LinearLayout.LayoutParams(0, -2, 1f);
@@ -1071,6 +1071,11 @@ private void addDivider(LinearLayout layout) {
 
 // Udhar update dialog
 private void showUpdateDueDialog(Order o) {
+    if (o.due <= 0) {
+        Toast.makeText(this, "✅ कोई बकाया नहीं है!", Toast.LENGTH_SHORT).show();
+        renderOrdersTab();
+        return;
+    }
     LinearLayout layout = new LinearLayout(this);
     layout.setOrientation(LinearLayout.VERTICAL);
     layout.setPadding(40, 20, 40, 20);
