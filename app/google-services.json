@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "407983490573",
+    "firebase_url": "https://kharido-mithai-pos-default-rtdb.firebaseio.com",
     "project_id": "kharido-mithai-pos",
     "storage_bucket": "kharido-mithai-pos.firebasestorage.app"
   },
