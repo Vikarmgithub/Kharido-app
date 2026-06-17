@@ -32,7 +32,7 @@
             android:name=".BackupReceiver"
             android:exported="false">
             <intent-filter>
-                <!-- Phone restart hone ke baad bhi alarm reschedule ho ──>
+                <!-- Phone restart hone ke baad bhi alarm reschedule ho -->
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
