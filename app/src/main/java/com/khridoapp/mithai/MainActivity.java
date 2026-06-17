@@ -1549,7 +1549,8 @@ private void showUpdateDueDialog(Order o) {
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
     builder.setTitle(isHindi ? "⚙️ सेटिंग्स" : "⚙️ Settings");
 
-    if (!isAppActivated) {
+    if (!isAppActivated || isDemoMode) {
+        // Not activated OR demo chal rha hai — License Panel dikhao
         String[] options = isHindi
             ? new String[]{"🌐 English", "🔑 लाइसेंस पैनल", "🛠️ Admin Panel", "☁️ Firebase Backup", "📥 Firebase Restore"}
             : new String[]{"🌐 Hindi", "🔑 License Panel", "🛠️ Admin Panel", "☁️ Firebase Backup", "📥 Firebase Restore"};
@@ -1953,8 +1954,16 @@ private void showUpdateDueDialog(Order o) {
             // Key sahi hai — activate karo
             activationPrefs.edit()
                 .putBoolean(KEY_IS_ACTIVATED, true)
+                .remove(KEY_DEMO_START) // demo data clear karo
                 .apply();
             isAppActivated = true;
+            isDemoMode = false;
+            // Demo timer band karo
+            if (demoCountDownTimer != null) {
+                demoCountDownTimer.cancel();
+                demoCountDownTimer = null;
+            }
+            if (tvDemoTimer != null) tvDemoTimer.setVisibility(View.GONE);
             Toast.makeText(this, "🎉 App Activate हो गई!", Toast.LENGTH_LONG).show();
         } else {
             Toast.makeText(this, "❌ गलत License Key!", Toast.LENGTH_SHORT).show();
