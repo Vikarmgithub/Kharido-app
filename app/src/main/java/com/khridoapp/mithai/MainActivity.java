@@ -150,7 +150,10 @@ private String tempSelectedImageUri = "";
         // Initialize Firebase
         mAuth = FirebaseAuth.getInstance();
         dbRef = FirebaseDatabase.getInstance().getReference("mithai_backup");
-
+        // Anonymous sign-in silently karo
+        if (mAuth.getCurrentUser() == null) {
+        mAuth.signInAnonymously();
+}
         // Get Device ID
         try {
             deviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
