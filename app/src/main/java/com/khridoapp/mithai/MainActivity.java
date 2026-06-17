@@ -321,9 +321,27 @@ private String tempSelectedImageUri = "";
 
     private void initSeedProducts() {
         if (products.isEmpty()) {
-            products.add(new Product("p1", "गुलाब जामुन", "Gulab Jamun", 360, ""));
-            products.add(new Product("p2", "काजू कतली", "Kaju Katli", 820, ""));
-            products.add(new Product("p3", "रसगुल्ला", "Rasgulla", 320, ""));
+            // ── मिठाई (Mithai) ──
+            products.add(new Product("p1",  "मोतीचूर लड्डू",   "Motichoor Laddu",  180, ""));
+            products.add(new Product("p2",  "बेसन लड्डू",       "Besan Laddu",      150, ""));
+            products.add(new Product("p3",  "पेड़ा",             "Peda",             320, ""));
+            products.add(new Product("p4",  "चक्की",            "Chakki",           140, ""));
+            products.add(new Product("p5",  "बर्फी",            "Barfi",            300, ""));
+            products.add(new Product("p6",  "दाना",             "Dana",             140, ""));
+            products.add(new Product("p7",  "दाना लड्डू",       "Dana Laddu",       150, ""));
+            products.add(new Product("p8",  "पेठा",             "Petha",            150, ""));
+            products.add(new Product("p9",  "गुलाब जामुन",      "Gulab Jamun",      300, ""));
+            products.add(new Product("p10", "रसगुल्ला",         "Rasgulla",         300, ""));
+            products.add(new Product("p11", "मिल्क केक (कलाकंद)", "Milk Cake (Kalakand)", 320, ""));
+            products.add(new Product("p12", "मिश्री मावा",      "Mishri Mawa",      340, ""));
+            // ── नमकीन (Namkeen) ──
+            products.add(new Product("p13", "मिक्स नमकीन",      "Mix Namkeen",      220, ""));
+            products.add(new Product("p14", "नॉर्मल नमकीन",     "Normal Namkeen",   200, ""));
+            products.add(new Product("p15", "रामदेव नमकीन",     "Ramdev Namkeen",    60, ""));
+            products.add(new Product("p16", "कचौरी",            "Kachori",           20, ""));
+            products.add(new Product("p17", "समोसा",            "Samosa",            15, ""));
+            // ── पेय (Beverages) ──
+            products.add(new Product("p18", "चाय",              "Chai",              10, ""));
         }
     }
 
