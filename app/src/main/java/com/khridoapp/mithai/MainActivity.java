@@ -1143,10 +1143,7 @@ private void showUpdateDueDialog(Order o) {
         if (dashDynamicContent == null) return;
         dashDynamicContent.removeAllViews();
 
-        double totalSales = 0;
-        double totalReceived = 0;
-        double totalDue = 0;
-
+        double totalSales = 0, totalReceived = 0, totalDue = 0;
         for (Order o : orders) {
             if (!shouldShowOrder(o)) continue;
             totalSales += o.total;
@@ -1154,6 +1151,7 @@ private void showUpdateDueDialog(Order o) {
             totalDue += o.due;
         }
 
+        // ── Card 1: बिक्री सारांश ──
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackgroundColor(Color.WHITE);
@@ -1162,24 +1160,176 @@ private void showUpdateDueDialog(Order o) {
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
         cardParams.setMargins(0, 0, 0, 12);
         card.setLayoutParams(cardParams);
-
-        // Title
         TextView titleText = new TextView(this);
         titleText.setText("📊 बिक्री सारांश");
         titleText.setTextSize(16);
         titleText.setTypeface(null, Typeface.BOLD);
         card.addView(titleText);
-
-        // Total Sales
         addAnalyticsRow(card, "कुल बिक्री", "₹" + (int) totalSales, Color.parseColor("#4CAF50"));
-
-        // Received
         addAnalyticsRow(card, "प्राप्त", "₹" + (int) totalReceived, Color.parseColor("#2196F3"));
-
-        // Due
         addAnalyticsRow(card, "बकाया", "₹" + (int) totalDue, Color.parseColor("#F44336"));
-
         dashDynamicContent.addView(card);
+
+        // ── Card 2: बकाया खाता ──
+        ArrayList<Order> dueOrders = new ArrayList<>();
+        for (Order o : orders) {
+            if (o.due > 0 && !o.status.equals("Cancelled")) dueOrders.add(o);
+        }
+
+        LinearLayout dueCard = new LinearLayout(this);
+        dueCard.setOrientation(LinearLayout.VERTICAL);
+        dueCard.setBackgroundColor(Color.WHITE);
+        dueCard.setPadding(dp(14), dp(14), dp(14), dp(14));
+        dueCard.setElevation(2f);
+        LinearLayout.LayoutParams dcLp = new LinearLayout.LayoutParams(-1, -2);
+        dcLp.setMargins(0, 0, 0, dp(12));
+        dueCard.setLayoutParams(dcLp);
+
+        // Header
+        LinearLayout dueHeader = new LinearLayout(this);
+        dueHeader.setOrientation(LinearLayout.HORIZONTAL);
+        dueHeader.setGravity(Gravity.CENTER_VERTICAL);
+        dueHeader.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+        TextView dueTitleTv = new TextView(this);
+        dueTitleTv.setText("⚠️ बकाया खाता");
+        dueTitleTv.setTextSize(16);
+        dueTitleTv.setTypeface(null, Typeface.BOLD);
+        dueTitleTv.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+        dueHeader.addView(dueTitleTv);
+        TextView countBadge = new TextView(this);
+        countBadge.setText(dueOrders.size() + " लोग");
+        countBadge.setTextSize(12);
+        countBadge.setTextColor(Color.WHITE);
+        countBadge.setBackgroundColor(Color.parseColor("#F44336"));
+        countBadge.setPadding(dp(10), dp(4), dp(10), dp(4));
+        dueHeader.addView(countBadge);
+        dueCard.addView(dueHeader);
+
+        if (dueOrders.isEmpty()) {
+            TextView noDue = new TextView(this);
+            noDue.setText("🎉 कोई बकाया नहीं!");
+            noDue.setTextSize(14);
+            noDue.setTextColor(Color.parseColor("#4CAF50"));
+            LinearLayout.LayoutParams ndLp = new LinearLayout.LayoutParams(-1, -2);
+            ndLp.topMargin = dp(12);
+            noDue.setLayoutParams(ndLp);
+            dueCard.addView(noDue);
+        } else {
+            View divLine = new View(this);
+            divLine.setBackgroundColor(Color.parseColor("#EEEEEE"));
+            LinearLayout.LayoutParams dlLp = new LinearLayout.LayoutParams(-1, 1);
+            dlLp.setMargins(0, dp(10), 0, dp(8));
+            divLine.setLayoutParams(dlLp);
+            dueCard.addView(divLine);
+
+            for (Order o : dueOrders) {
+                final Order fo = o;
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setBackgroundColor(Color.parseColor("#FFF8F8"));
+                row.setPadding(dp(12), dp(10), dp(12), dp(10));
+                LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, -2);
+                rowLp.setMargins(0, 0, 0, dp(6));
+                row.setLayoutParams(rowLp);
+
+                LinearLayout nameCol = new LinearLayout(this);
+                nameCol.setOrientation(LinearLayout.VERTICAL);
+                nameCol.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+                TextView tvCustName = new TextView(this);
+                tvCustName.setText("👤 " + o.customerName);
+                tvCustName.setTextSize(14);
+                tvCustName.setTypeface(null, Typeface.BOLD);
+                tvCustName.setTextColor(Color.parseColor("#1E293B"));
+                nameCol.addView(tvCustName);
+                TextView tvDate = new TextView(this);
+                tvDate.setText("📅 " + o.dateKey);
+                tvDate.setTextSize(11);
+                tvDate.setTextColor(Color.parseColor("#888888"));
+                nameCol.addView(tvDate);
+                row.addView(nameCol);
+
+                TextView tvDueAmt = new TextView(this);
+                tvDueAmt.setText("₹" + (int) o.due);
+                tvDueAmt.setTextSize(15);
+                tvDueAmt.setTypeface(null, Typeface.BOLD);
+                tvDueAmt.setTextColor(Color.parseColor("#F44336"));
+                LinearLayout.LayoutParams amtLp = new LinearLayout.LayoutParams(-2, -2);
+                amtLp.setMargins(0, 0, dp(10), 0);
+                tvDueAmt.setLayoutParams(amtLp);
+                row.addView(tvDueAmt);
+
+                Button btnDetail = new Button(this);
+                btnDetail.setText("विवरण");
+                btnDetail.setTextSize(11);
+                btnDetail.setTextColor(Color.WHITE);
+                btnDetail.setBackgroundColor(Color.parseColor("#F44336"));
+                btnDetail.setPadding(dp(10), dp(2), dp(10), dp(2));
+                btnDetail.setLayoutParams(new LinearLayout.LayoutParams(-2, dp(36)));
+                btnDetail.setOnClickListener(v -> showDueDetailDialog(fo));
+                row.addView(btnDetail);
+
+                dueCard.addView(row);
+            }
+        }
+        dashDynamicContent.addView(dueCard);
+    }
+
+    private void showDueDetailDialog(Order o) {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dp(20), dp(16), dp(20), dp(16));
+
+        TextView tvInfo = new TextView(this);
+        tvInfo.setText("👤 " + o.customerName + "\n📅 " + o.time);
+        tvInfo.setTextSize(13);
+        tvInfo.setTypeface(null, Typeface.BOLD);
+        tvInfo.setTextColor(Color.parseColor("#333333"));
+        layout.addView(tvInfo);
+
+        View div1 = new View(this);
+        div1.setBackgroundColor(Color.parseColor("#EEEEEE"));
+        LinearLayout.LayoutParams d1Lp = new LinearLayout.LayoutParams(-1, 1);
+        d1Lp.setMargins(0, dp(10), 0, dp(10));
+        div1.setLayoutParams(d1Lp);
+        layout.addView(div1);
+
+        TextView tvItemsTitle = new TextView(this);
+        tvItemsTitle.setText("🛒 सामान:");
+        tvItemsTitle.setTextSize(13);
+        tvItemsTitle.setTypeface(null, Typeface.BOLD);
+        tvItemsTitle.setTextColor(Color.parseColor("#333333"));
+        layout.addView(tvItemsTitle);
+
+        for (OrderItem item : o.items) {
+            TextView tvItem = new TextView(this);
+            tvItem.setText("  • " + item.name + " × " + item.qty + " = ₹" + (int) item.price);
+            tvItem.setTextSize(13);
+            tvItem.setTextColor(Color.parseColor("#444444"));
+            layout.addView(tvItem);
+        }
+
+        View div2 = new View(this);
+        div2.setBackgroundColor(Color.parseColor("#EEEEEE"));
+        LinearLayout.LayoutParams d2Lp = new LinearLayout.LayoutParams(-1, 1);
+        d2Lp.setMargins(0, dp(10), 0, dp(10));
+        div2.setLayoutParams(d2Lp);
+        layout.addView(div2);
+
+        addDetailRow(layout, "💰 कुल",   "₹" + (int) o.total);
+        addDetailRow(layout, "✅ मिला",  "₹" + (int) o.received);
+        if (o.discount > 0) addDetailRow(layout, "🏷️ छूट", "₹" + (int) o.discount);
+        addDetailRow(layout, "⚠️ बकाया","₹" + (int) o.due);
+
+        ScrollView sv = new ScrollView(this);
+        sv.addView(layout);
+
+        new AlertDialog.Builder(this)
+            .setTitle("📋 बकाया विवरण — " + o.customerName)
+            .setView(sv)
+            .setPositiveButton("💰 उधार Update", (d, w) -> showUpdateDueDialog(o))
+            .setNegativeButton("बंद करें", null)
+            .show();
     }
 
     private void addAnalyticsRow(LinearLayout container, String label, String value, int color) {
