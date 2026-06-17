@@ -853,8 +853,8 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         btnView.setLayoutParams(vP);
         btnRow.addView(btnView);
 
-        // Udhar update
-        if (o.due > 0 && !o.status.equals("Cancelled") && !o.status.equals("Completed")) {
+        // Udhar update — Pending ya Completed dono mein dikhe, jab tak due > 0
+        if (o.due > 0 && !o.status.equals("Cancelled")) {
             Button btnPay = makeActionBtn("💰 उधार", "#FF9800");
             btnPay.setOnClickListener(v -> showUpdateDueDialog(fo));
             LinearLayout.LayoutParams pP = new LinearLayout.LayoutParams(0, -2, 1f);
