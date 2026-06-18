@@ -2028,7 +2028,7 @@ private void startDemoTimer(long remainingMs) {
 // Key validation — KeyGeneratorActivity ke algorithm ka reverse
 // 🔒 FIX: Caesar cipher crackable tha — ab HMAC-SHA256 (KeyGeneratorActivity se match)
 // NOTE: secret abhi bhi client APK mein hai — asli fix backend verification hai.
-private static final String LICENSE_SECRET = "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET_VALUE";
+private static final String LICENSE_SECRET = "maCWwxw3JN!4VQCVLHbJUO1nqwWK2eZWZ0kkm&gB";
 
 private boolean validateLicenseKey(String enteredKey, String dId) {
     try {

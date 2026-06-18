@@ -120,7 +120,7 @@ public class KeyGeneratorActivity extends Activity {
     }
 
     // 🔒 FIX: MainActivity.LICENSE_SECRET se match honi chahiye
-    private static final String LICENSE_SECRET = "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET_VALUE";
+    private static final String LICENSE_SECRET = "maCWwxw3JN!4VQCVLHbJUO1nqwWK2eZWZ0kkm&gB";
 
     private static String hmacShort(String deviceId) throws Exception {
         javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
