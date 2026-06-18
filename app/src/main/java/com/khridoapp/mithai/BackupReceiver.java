@@ -20,6 +20,12 @@ public class BackupReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        // 🔒 FIX: Login + UID zaroori — ANDROID_ID guessable tha
+        com.google.firebase.auth.FirebaseUser user =
+                com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+        String deviceId = user.getUid();
+
         SharedPreferences prefs = context.getSharedPreferences("MithaiData", Context.MODE_PRIVATE);
         String ordersJson  = prefs.getString("orders_json", "[]");
         String productsJson = prefs.getString("products_json", "[]");
@@ -29,16 +35,6 @@ public class BackupReceiver extends BroadcastReceiver {
             if (new JSONArray(ordersJson).length() == 0) return;
         } catch (Exception e) {
             return;
-        }
-
-        // ── Device ID ──
-        String deviceId;
-        try {
-            deviceId = Settings.Secure.getString(
-                context.getContentResolver(), Settings.Secure.ANDROID_ID);
-            if (deviceId == null || deviceId.isEmpty()) deviceId = "MITHAIPOS404";
-        } catch (Exception e) {
-            deviceId = "MITHAIPOS404";
         }
 
         // ── Aaj ki date key ──
