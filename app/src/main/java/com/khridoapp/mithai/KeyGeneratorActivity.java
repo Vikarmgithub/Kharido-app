@@ -98,19 +98,13 @@ public class KeyGeneratorActivity extends Activity {
                 return;
             }
 
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < dId.length(); i++) {
-                sb.append((char) (dId.charAt(i) + 3));
+            String finalGeneratedKey;
+            try {
+                finalGeneratedKey = "MITHAI-" + hmacShort(dId) + "-893";
+            } catch (Exception e) {
+                Toast.makeText(this, "Key generation failed!", Toast.LENGTH_SHORT).show();
+                return;
             }
-            String shiftedStr = sb.toString().toUpperCase();
-
-            if (shiftedStr.length() > 2) {
-                char first = shiftedStr.charAt(0);
-                char last = shiftedStr.charAt(shiftedStr.length() - 1);
-                shiftedStr = last + shiftedStr.substring(1, shiftedStr.length() - 1) + first;
-            }
-
-            final String finalGeneratedKey = "MITHAI-" + shiftedStr + "-" + (dId.length() * 7) + "-893";
             tvResultKey.setText("🔑 ग्राहक की लाइसेंस की:\n\n" + finalGeneratedKey);
             btnCopyKey.setVisibility(View.VISIBLE);
 
@@ -123,5 +117,18 @@ public class KeyGeneratorActivity extends Activity {
                 }
             });
         });
+    }
+
+    // 🔒 FIX: MainActivity.LICENSE_SECRET se match honi chahiye
+    private static final String LICENSE_SECRET = "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET_VALUE";
+
+    private static String hmacShort(String deviceId) throws Exception {
+        javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+        mac.init(new javax.crypto.spec.SecretKeySpec(
+                LICENSE_SECRET.getBytes("UTF-8"), "HmacSHA256"));
+        byte[] raw = mac.doFinal(deviceId.getBytes("UTF-8"));
+        StringBuilder hex = new StringBuilder();
+        for (byte b : raw) hex.append(String.format("%02X", b));
+        return hex.substring(0, 12);
     }
 }
