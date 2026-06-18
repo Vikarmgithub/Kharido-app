@@ -2026,26 +2026,27 @@ private void startDemoTimer(long remainingMs) {
 }
 
 // Key validation — KeyGeneratorActivity ke algorithm ka reverse
+// 🔒 FIX: Caesar cipher crackable tha — ab HMAC-SHA256 (KeyGeneratorActivity se match)
+// NOTE: secret abhi bhi client APK mein hai — asli fix backend verification hai.
+private static final String LICENSE_SECRET = "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET_VALUE";
+
 private boolean validateLicenseKey(String enteredKey, String dId) {
     try {
-        // Expected key banao device ID se
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < dId.length(); i++) {
-            sb.append((char) (dId.charAt(i) + 3));
-        }
-        String shiftedStr = sb.toString().toUpperCase();
-
-        if (shiftedStr.length() > 2) {
-            char first = shiftedStr.charAt(0);
-            char last = shiftedStr.charAt(shiftedStr.length() - 1);
-            shiftedStr = last + shiftedStr.substring(1, shiftedStr.length() - 1) + first;
-        }
-
-        String expectedKey = "MITHAI-" + shiftedStr + "-" + (dId.length() * 7) + "-893";
+        String expectedKey = "MITHAI-" + hmacShort(dId) + "-893";
         return enteredKey.equalsIgnoreCase(expectedKey);
     } catch (Exception e) {
         return false;
     }
+}
+
+private static String hmacShort(String deviceId) throws Exception {
+    javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+    mac.init(new javax.crypto.spec.SecretKeySpec(
+            LICENSE_SECRET.getBytes("UTF-8"), "HmacSHA256"));
+    byte[] raw = mac.doFinal(deviceId.getBytes("UTF-8"));
+    StringBuilder hex = new StringBuilder();
+    for (byte b : raw) hex.append(String.format("%02X", b));
+    return hex.substring(0, 12);
 }
 
     // ==================== FIREBASE BACKUP / RESTORE ====================
@@ -2118,6 +2119,12 @@ private boolean validateLicenseKey(String enteredKey, String dId) {
 
     // ── Manual backup: aaj ki date key mein save karo + 10 din se purane hatao ──
     private void backupToFirebase() {
+        com.google.firebase.auth.FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, "⚠️ Login zaroori hai backup ke liye!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String uid = user.getUid(); // 🔒 FIX: ANDROID_ID guessable tha
         if (orders.isEmpty()) {
             Toast.makeText(this, "⚠️ कोई Data नहीं — Backup Skip!", Toast.LENGTH_SHORT).show();
             return;
@@ -2131,7 +2138,7 @@ private boolean validateLicenseKey(String enteredKey, String dId) {
         String dateKey    = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
         String backupTime = new SimpleDateFormat("dd-MMM-yyyy HH:mm", Locale.getDefault()).format(new Date());
 
-        DatabaseReference todayRef = dbRef.child(deviceId).child(dateKey);
+        DatabaseReference todayRef = dbRef.child(uid).child(dateKey);
         todayRef.child("orders").setValue(ordersJson);
         todayRef.child("products").setValue(productsJson);
         todayRef.child("backupTime").setValue(backupTime)
@@ -2148,15 +2155,21 @@ private boolean validateLicenseKey(String enteredKey, String dId) {
         for (int i = 11; i <= 60; i++) {
             cal.setTime(new Date());
             cal.add(Calendar.DAY_OF_YEAR, -i);
-            dbRef.child(deviceId).child(sdf.format(cal.getTime())).removeValue();
+            dbRef.child(uid).child(sdf.format(cal.getTime())).removeValue();
         }
     }
 
     // ── Restore: Firebase pe available dates dikhao, user choose kare ──
     private void restoreFromFirebase() {
+        com.google.firebase.auth.FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, "⚠️ Login zaroori hai restore ke liye!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String uid = user.getUid(); // 🔒 FIX
         Toast.makeText(this, "📥 उपलब्ध Backups देख रहे हैं...", Toast.LENGTH_SHORT).show();
 
-        dbRef.child(deviceId).addListenerForSingleValueEvent(new ValueEventListener() {
+        dbRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 if (!snapshot.exists() || !snapshot.hasChildren()) {
@@ -2173,7 +2186,7 @@ private boolean validateLicenseKey(String enteredKey, String dId) {
                 String[] dateArr = dates.toArray(new String[0]);
                 new AlertDialog.Builder(MainActivity.this)
                     .setTitle("📅 Backup Date चुनें")
-                    .setItems(dateArr, (dialog, which) -> restoreFromDate(dateArr[which]))
+                    .setItems(dateArr, (dialog, which) -> restoreFromDate(uid, dateArr[which]))
                     .setNegativeButton("Cancel", null)
                     .show();
             }
@@ -2184,10 +2197,10 @@ private boolean validateLicenseKey(String enteredKey, String dId) {
         });
     }
 
-    private void restoreFromDate(String dateKey) {
+    private void restoreFromDate(String uid, String dateKey) {
         Toast.makeText(this, "📥 " + dateKey + " का Data Restore हो रहा है...", Toast.LENGTH_SHORT).show();
 
-        dbRef.child(deviceId).child(dateKey).addListenerForSingleValueEvent(new ValueEventListener() {
+        dbRef.child(uid).child(dateKey).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 if (!snapshot.exists()) {
